@@ -7,14 +7,14 @@
 [![Deploy on Hostinger](https://img.shields.io/badge/Deploy_on-Hostinger-673DE6?style=for-the-badge&logo=hostinger&logoColor=white)](https://www.hostinger.com/web-apps-hosting)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](./LICENSE)
-[![CI](https://github.com/ArnasDon/wacrm/actions/workflows/ci.yml/badge.svg)](https://github.com/ArnasDon/wacrm/actions/workflows/ci.yml)
+[![CI](https://github.com/Techhackontime999/wacrm/actions/workflows/ci.yml/badge.svg)](https://github.com/Techhackontime999/wacrm/actions/workflows/ci.yml)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ecf8e?logo=supabase)](https://supabase.com)
-[![Stars](https://img.shields.io/github/stars/ArnasDon/wacrm?style=social)](https://github.com/ArnasDon/wacrm/stargazers)
+[![Stars](https://img.shields.io/github/stars/Techhackontime999/wacrm?style=social)](https://github.com/Techhackontime999/wacrm/stargazers)
 
 The marketing site and self-host docs live in a separate repo:
-[ArnasDon/wacrm-site](https://github.com/ArnasDon/wacrm-site)
-([wacrm.tech](https://wacrm.tech)). This repo is the product —
+[Techhackontime999/wacrm-site](https://github.com/Techhackontime999/wacrm-site)
+([crm-neural-aurora.vercel.app](https://crm-neural-aurora.vercel.app)). This repo is the product —
 clone or fork it to run your own CRM.
 
 ## What you get out of the box
@@ -55,7 +55,7 @@ in an afternoon and make yours.
 ## Quick start
 
 ```bash
-# Fork on GitHub first: https://github.com/ArnasDon/wacrm → Fork
+# Fork on GitHub first: https://github.com/Techhackontime999/wacrm → Fork
 git clone https://github.com/<your-username>/wacrm.git
 cd wacrm
 npm install
@@ -71,7 +71,7 @@ Open <http://localhost:3000>. You'll be redirected to `/login` (or
 Full self-host documentation — Supabase migrations, WhatsApp Business
 API config, and production deploy — lives at
 **[wacrm.tech/docs](https://wacrm.tech/docs)**
-(source: [ArnasDon/wacrm-site](https://github.com/ArnasDon/wacrm-site)).
+(source: [Techhackontime999/wacrm-site](https://github.com/Techhackontime999/wacrm-site)).
 
 Key pages:
 - [Getting started](https://wacrm.tech/docs/getting-started)
