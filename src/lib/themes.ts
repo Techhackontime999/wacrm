@@ -1,50 +1,38 @@
-/**
- * Single source of truth for the color-theme catalog.
- *
- * The CSS variables themselves live in `src/app/globals.css` under
- * `html[data-theme="..."]` blocks — that file is the one we paste
- * theme tokens into. This module only carries the metadata the UI
- * (settings picker, no-flash boot script) needs.
- *
- * Adding a new theme is a two-step change:
- *   1. Append the new `html[data-theme="<id>"]` block in globals.css
- *      with every token from an existing theme (use violet as the
- *      shape reference).
- *   2. Add an entry below. The order here drives the picker grid.
- */
-
 export const THEME_IDS = [
   "violet",
   "emerald",
   "cobalt",
   "amber",
   "rose",
+  "neural",
 ] as const;
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
-export const DEFAULT_THEME: ThemeId = "violet";
+export const DEFAULT_THEME: ThemeId = "neural";
 
 export const STORAGE_KEY = "wacrm.theme";
+
+export const STORAGE_KEY_DARK = "wacrm.dark";
 
 export interface ThemeMeta {
   id: ThemeId;
   name: string;
   tagline: string;
-  /**
-   * Static swatch color for the picker chip. Hard-coded so the boot
-   * script / picker cards don't need a getComputedStyle round trip
-   * before the page settles. Must mirror `--primary` of the same
-   * theme in globals.css.
-   */
   swatch: string;
 }
 
 export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
+    id: "neural",
+    name: "Neural Aurora",
+    tagline: "Cyan-accented — premium, futuristic, vibrant.",
+    swatch: "#00f0ff",
+  },
+  {
     id: "violet",
     name: "Violet",
-    tagline: "The default — confident, slightly playful.",
+    tagline: "The original default — confident, slightly playful.",
     swatch: "oklch(0.526 0.247 293)",
   },
   {

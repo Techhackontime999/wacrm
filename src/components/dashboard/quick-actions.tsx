@@ -31,12 +31,13 @@ export function QuickActions() {
           <Link
             key={a.href}
             href={a.href}
-            className="group flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 transition-colors hover:border-slate-700 hover:bg-slate-800/60"
+            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-[var(--hover-bg)]"
+            style={{ borderColor: "var(--border-color)", background: "var(--card-bg)" }}
           >
-            <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 ${a.tint}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${a.tint}`} style={{ background: "var(--hover-bg)" }}>
               <Icon className="h-4 w-4" />
             </div>
-            <span className="text-sm font-medium text-white">{a.label}</span>
+            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{a.label}</span>
           </Link>
         )
       })}

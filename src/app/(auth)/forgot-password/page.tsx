@@ -1,26 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare, CheckCircle, ArrowLeft } from "lucide-react";
+import { NeuralLogo } from "@/components/ui/neural-logo";
+import { ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const supabase = createClient();
+
+  useEffect(() => { setMounted(true); }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,91 +35,121 @@ export default function ForgotPasswordPage() {
     setLoading(false);
   };
 
+  const cardStyle: React.CSSProperties = {
+    background: "var(--glass-bg)",
+    backdropFilter: "blur(32px)",
+    WebkitBackdropFilter: "blur(32px)",
+    borderColor: "var(--border-color)",
+    boxShadow: "var(--shadow-diffusion)",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    borderColor: "var(--border-color)",
+    background: "var(--input-bg)",
+    color: "var(--text-primary)",
+  };
+
+  const animStyle = (delay: number): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? "translateY(0)" : "translateY(20px)",
+    transition: `opacity 0.5s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.5s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
+  });
+
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-        <Card className="w-full max-w-md border-slate-800 bg-slate-900">
-          <CardHeader className="items-center text-center">
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <CheckCircle className="h-6 w-6 text-primary" />
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4" style={{ background: "var(--bg-primary)" }}>
+        <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 60%)", opacity: 0.12 }} />
+        <div className="relative z-10 w-full max-w-md px-6" style={animStyle(0)}>
+          <div className="rounded-2xl border p-8 text-center" style={cardStyle}>
+            <div className="mb-4 flex justify-center">
+              <NeuralLogo size="large" />
             </div>
-            <CardTitle className="text-xl text-white">
-              Check your email
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              We&apos;ve sent a password reset link to{" "}
-              <span className="text-white">{email}</span>. Please check your
-              inbox.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="w-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
-              >
-                Back to sign in
-              </Button>
+            <h1 className="mb-2 text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Check Your Email
+            </h1>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              We sent a password reset link to <strong style={{ color: "var(--accent-glow)" }}>{email}</strong>.
+            </p>
+            <Link
+              href="/login"
+              className="mt-6 inline-block rounded-lg px-6 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90"
+              style={{ background: "var(--primary)" }}
+            >
+              Back to Sign In
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <Card className="w-full max-w-md border-slate-800 bg-slate-900">
-        <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <MessageSquare className="h-6 w-6 text-primary" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4" style={{ background: "var(--bg-primary)" }}>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 60%)", opacity: 0.12 }} />
+
+      <div className="relative z-10 w-full max-w-md px-6" style={animStyle(0)}>
+        <div className="rounded-2xl border p-8" style={cardStyle}>
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="mb-4">
+              <NeuralLogo size="large" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Reset Password
+            </h1>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Enter your email and we&apos;ll send you a reset link
+            </p>
           </div>
-          <CardTitle className="text-xl text-white">Reset password</CardTitle>
-          <CardDescription className="text-slate-400">
-            Enter your email and we&apos;ll send you a reset link
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleReset} className="flex flex-col gap-4">
+
+          <form onSubmit={handleReset} className="space-y-5">
             {error && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                 {error}
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-slate-300">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                 Email
-              </Label>
-              <Input
-                id="email"
+              </label>
+              <input
                 type="email"
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
                 required
-                className="border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus-visible:border-primary focus-visible:ring-primary/20"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors focus:ring-1"
+                style={inputStyle}
               />
             </div>
 
-            <Button
+            <button
               type="submit"
               disabled={loading}
-              className="mt-2 h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
-              {loading ? "Sending..." : "Send reset link"}
-            </Button>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Sending...
+                </span>
+              ) : (
+                "Send Reset Link"
+              )}
+            </button>
           </form>
 
           <Link
             href="/login"
-            className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-slate-300"
+            className="mt-6 flex items-center justify-center gap-2 text-xs hover:underline"
+            style={{ color: "var(--text-secondary)" }}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to sign in
           </Link>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

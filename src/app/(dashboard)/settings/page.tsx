@@ -28,10 +28,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // The URL is the single source of truth for the active tab — no
-  // local state, no sync effect. A previous revision duplicated this
-  // into `useState` + a sync effect, which tripped React 19's
-  // set-state-in-effect rule and was also redundant.
   const queryTab = searchParams.get('tab');
   const tab: TabValue = isTabValue(queryTab) ? queryTab : 'profile';
 
@@ -44,46 +40,57 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Settings</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
           Manage your profile, WhatsApp® integration, message templates, and
           tags.
         </p>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => onChange(v as TabValue)}>
-        <TabsList className="bg-slate-900 border border-slate-700">
+        <TabsList
+          className="border w-full sm:w-auto shadow-sm"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border-color)',
+          }}
+        >
           <TabsTrigger
             value="profile"
-            className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
+            className="data-active:bg-white dark:data-active:bg-[var(--hover-bg)] data-active:text-[var(--primary)] data-active:shadow-sm data-active:border-[var(--border-color)]"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <User className="size-4" />
             Profile
           </TabsTrigger>
           <TabsTrigger
             value="whatsapp"
-            className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
+            className="data-active:bg-white dark:data-active:bg-[var(--hover-bg)] data-active:text-[var(--primary)] data-active:shadow-sm data-active:border-[var(--border-color)]"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <Settings className="size-4" />
             WhatsApp Config
           </TabsTrigger>
           <TabsTrigger
             value="templates"
-            className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
+            className="data-active:bg-white dark:data-active:bg-[var(--hover-bg)] data-active:text-[var(--primary)] data-active:shadow-sm data-active:border-[var(--border-color)]"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <MessageSquare className="size-4" />
             Templates
           </TabsTrigger>
           <TabsTrigger
             value="tags"
-            className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
+            className="data-active:bg-white dark:data-active:bg-[var(--hover-bg)] data-active:text-[var(--primary)] data-active:shadow-sm data-active:border-[var(--border-color)]"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <Tag className="size-4" />
             Tags
           </TabsTrigger>
           <TabsTrigger
             value="appearance"
-            className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
+            className="data-active:bg-white dark:data-active:bg-[var(--hover-bg)] data-active:text-[var(--primary)] data-active:shadow-sm data-active:border-[var(--border-color)]"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <Palette className="size-4" />
             Appearance

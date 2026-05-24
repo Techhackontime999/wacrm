@@ -36,8 +36,6 @@ function getPageTitle(pathname: string): string {
 }
 
 interface HeaderProps {
-  /** Wired to the shell's drawer state. Used only on mobile — the
-   *  hamburger button is hidden on lg+. */
   onOpenSidebar?: () => void;
 }
 
@@ -52,25 +50,24 @@ export function Header({ onOpenSidebar }: HeaderProps) {
     "U";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 px-4 lg:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-[var(--bg-primary)] px-4 lg:px-6 border-[var(--border-color)]">
       <div className="flex min-w-0 items-center gap-2">
-        {/* Hamburger — mobile only. 44×44 hit target per Apple HIG. */}
         <button
           type="button"
           onClick={onOpenSidebar}
           aria-label="Open menu"
-          className="flex h-10 w-10 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-slate-800 hover:text-white lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-md text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] lg:hidden"
         >
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="truncate text-base font-semibold text-white sm:text-lg">
+        <h1 className="truncate text-base font-semibold text-[var(--text-primary)] sm:text-lg">
           {title}
         </h1>
       </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-slate-800/70 focus:bg-slate-800/70 focus:outline-none data-popup-open:bg-slate-800/70 sm:gap-3 sm:pl-1 sm:pr-3"
+          className="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-[var(--hover-bg)] focus:bg-[var(--hover-bg)] focus:outline-none data-popup-open:bg-[var(--hover-bg)] sm:gap-3 sm:pl-1 sm:pr-3"
           aria-label="Open account menu"
         >
           <Avatar className="size-8">
@@ -80,33 +77,33 @@ export function Header({ onOpenSidebar }: HeaderProps) {
                 alt={profile.full_name ?? "Avatar"}
               />
             ) : null}
-            <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+            <AvatarFallback className="bg-[var(--primary-soft)] text-sm font-medium text-[var(--primary)]">
               {initial}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm font-medium text-white sm:inline">
+          <span className="hidden text-sm font-medium text-[var(--text-primary)] sm:inline">
             {profile?.full_name ?? "User"}
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="min-w-56 bg-slate-900 text-slate-100 ring-slate-700"
+          className="min-w-56"
         >
           <div className="px-2 py-1.5">
-            <p className="truncate text-sm font-medium text-white">
+            <p className="truncate text-sm font-medium text-[var(--text-primary)]">
               {profile?.full_name ?? "User"}
             </p>
-            <p className="truncate text-xs text-slate-400">
+            <p className="truncate text-xs text-[var(--text-secondary)]">
               {profile?.email ?? ""}
             </p>
           </div>
-          <DropdownMenuSeparator className="bg-slate-800" />
+          <DropdownMenuSeparator className="bg-[var(--border-color)]" />
           <DropdownMenuItem
             render={
               <Link
                 href="/settings?tab=profile"
-                className="text-slate-200 focus:bg-slate-800 focus:text-white"
+                className="text-[var(--text-primary)] focus:bg-[var(--hover-bg)] focus:text-[var(--text-primary)]"
               />
             }
           >
@@ -117,17 +114,17 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             render={
               <Link
                 href="/settings?tab=whatsapp"
-                className="text-slate-200 focus:bg-slate-800 focus:text-white"
+                className="text-[var(--text-primary)] focus:bg-[var(--hover-bg)] focus:text-[var(--text-primary)]"
               />
             }
           >
             <SettingsIcon className="size-4" />
             Settings
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-slate-800" />
+          <DropdownMenuSeparator className="bg-[var(--border-color)]" />
           <DropdownMenuItem
             onClick={signOut}
-            className="text-slate-200 focus:bg-slate-800 focus:text-white"
+            className="text-[var(--text-primary)] focus:bg-[var(--hover-bg)] focus:text-[var(--text-primary)]"
           >
             <LogOut className="size-4" />
             Sign out

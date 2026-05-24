@@ -1,33 +1,63 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
 import { THEMES, type ThemeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 
-/**
- * Appearance panel — color-theme picker.
- *
- * Click a card → applies + persists immediately. No save button:
- * the whole change is a single CSS-variable swap on <html>, there's
- * nothing to roll back. The active card carries a check chip + a
- * primary-tinted border so the current pick is obvious.
- *
- * Persistence: localStorage only (device-scoped). The boot script in
- * layout.tsx replays the choice before first paint on subsequent
- * loads.
- */
 export function AppearancePanel() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark, toggleDark } = useTheme();
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
+      {/* Dark / Light toggle */}
       <div>
-        <h2 className="text-lg font-semibold text-white">Color theme</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Pick the accent color used across the app. All themes stay
-          dark — only the primary color (buttons, active nav, badges)
-          changes. Saved to this device.
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          Appearance
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Choose between light and dark mode, then pick an accent color.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => toggleDark()}
+          className={cn(
+            "relative flex h-10 w-20 items-center rounded-full transition-colors",
+            isDark ? "bg-[#1a1a2e]" : "bg-[var(--bg-secondary)]",
+          )}
+          style={{
+            border: "1px solid var(--border-color)",
+            boxShadow: "var(--shadow-diffusion)",
+          }}
+          aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+        >
+          <span
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-full transition-transform",
+              isDark
+                ? "translate-x-10 bg-[#2a2a45] text-[#00f0ff]"
+                : "translate-x-1 bg-white text-[#3a3a5c]",
+            )}
+            style={{ boxShadow: "var(--glass-inner)" }}
+          >
+            {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </span>
+        </button>
+        <span className="text-sm font-medium text-[var(--text-primary)]">
+          {isDark ? "Dark mode" : "Light mode"}
+        </span>
+      </div>
+
+      {/* Color accent picker */}
+      <div>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          Accent color
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Choose a signature hue for buttons, highlights, and active navigation. Works in both light and dark mode.
         </p>
       </div>
 
@@ -70,10 +100,11 @@ function ThemeCard({
       aria-pressed={isActive}
       aria-label={`Use ${name} theme`}
       className={cn(
-        "flex flex-col gap-3 rounded-lg border bg-card p-4 text-left transition-colors",
+        "flex flex-col gap-3 rounded-lg border p-4 text-left transition-colors",
+        "bg-[var(--card-bg)]",
         isActive
-          ? "border-primary/60 ring-2 ring-primary/40"
-          : "border-slate-800 hover:border-slate-700 hover:bg-slate-800/40",
+          ? "border-[var(--primary)]/60 ring-2 ring-[var(--primary)]/40"
+          : "border-[var(--border-color)] hover:border-[var(--border-color)] hover:bg-[var(--hover-bg)]",
       )}
     >
       <div className="flex items-center justify-between">
@@ -86,15 +117,17 @@ function ThemeCard({
           }}
         />
         {isActive && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary)]/15 px-2 py-0.5 text-[11px] font-medium text-[var(--primary)]">
             <Check className="h-3 w-3" />
             Active
           </span>
         )}
       </div>
       <div>
-        <div className="text-sm font-semibold text-white">{name}</div>
-        <div className="mt-1 text-xs leading-relaxed text-slate-400">
+        <div className="text-sm font-semibold text-[var(--text-primary)]">
+          {name}
+        </div>
+        <div className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
           {tagline}
         </div>
       </div>
@@ -103,9 +136,18 @@ function ThemeCard({
         aria-hidden
       >
         <span className="flex-1" style={{ background: swatch }} />
-        <span className="w-3 bg-slate-700" />
-        <span className="w-3 bg-slate-800" />
-        <span className="w-3 bg-slate-900" />
+        <span
+          className="w-3"
+          style={{ background: "var(--bg-primary)" }}
+        />
+        <span
+          className="w-3"
+          style={{ background: "var(--bg-secondary)" }}
+        />
+        <span
+          className="w-3"
+          style={{ background: "var(--muted)" }}
+        />
       </div>
       <span className="sr-only">Theme id: {id}</span>
     </button>

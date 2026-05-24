@@ -120,7 +120,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
           Live analytics across conversations, contacts, deals, broadcasts, and automations.
         </p>
       </div>
