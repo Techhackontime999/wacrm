@@ -197,7 +197,7 @@ export default function FlowsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export default function FlowsPage() {
             `sm:max-w-sm` baked into its default classes. Without the
             sm: prefix our override applies at base only and the
             sm-scoped 384px wins at every real desktop breakpoint. */}
-        <DialogContent className="sm:max-w-4xl bg-slate-900 text-slate-100">
+        <DialogContent className="sm:max-w-4xl bg-slate-900 text-slate-100 max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create a new flow</DialogTitle>
             <DialogDescription className="text-slate-400">

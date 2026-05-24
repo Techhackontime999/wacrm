@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
       <Tabs value={tab} onValueChange={(v) => onChange(v as TabValue)}>
         <TabsList
-          className="border w-full sm:w-auto shadow-sm"
+          className="border w-full sm:w-auto shadow-sm overflow-x-auto flex-nowrap max-w-full [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
           style={{
             background: 'var(--bg-secondary)',
             borderColor: 'var(--border-color)',

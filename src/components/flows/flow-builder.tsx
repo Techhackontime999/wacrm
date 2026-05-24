@@ -595,7 +595,7 @@ export function FlowBuilder({ initialFlow, initialNodes }: FlowBuilderProps) {
 
   // ---- Render ----
   return (
-    <div className="mx-auto flex h-full max-w-4xl flex-col gap-6 p-6">
+    <div className="mx-auto flex h-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
       <Header
         state={state}
         setState={setStateDirty}
@@ -710,8 +710,8 @@ function Header({
           Flows
         </button>
       </div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
           <Workflow className="h-5 w-5 shrink-0 text-primary" />
           <Input
             value={state.name}
@@ -719,25 +719,28 @@ function Header({
               setState((s) => ({ ...s, name: e.target.value }))
             }
             placeholder="Flow name"
-            className="max-w-md bg-slate-900 text-lg font-semibold"
+            className="min-w-0 flex-1 bg-slate-900 text-base font-semibold sm:text-lg"
           />
-          <StatusBadge status={state.status} />
-          {dirty && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-amber-300"
-              title="Unsaved changes — hit Save to persist"
-              aria-live="polite"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              Edited
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusBadge status={state.status} />
+            {dirty && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-amber-300"
+                title="Unsaved changes — hit Save to persist"
+                aria-live="polite"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                Edited
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onViewRuns()}
+            className="text-xs sm:text-sm"
           >
             <History className="h-3.5 w-3.5" />
             Runs
