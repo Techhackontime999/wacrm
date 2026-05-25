@@ -9,6 +9,38 @@ Versions follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0, `MINOR` bumps cover new modules; `PATCH` bumps cover bug fixes
 and polish.
 
+## [1.0.0] — 2026-05-25
+
+The **stable** release. All core CRM modules are feature-complete, tested,
+and ready for production self-hosting. This release marks the transition
+from pre-1.0 development to stable versioning.
+
+### What's new since 0.2.0
+
+- **Neural Aurora design system** — complete visual rebrand with custom
+  CSS variables, light/dark mode refinement, and brand identity throughout
+  the application.
+- **Responsive settings layout** — tabs now support horizontal scrolling
+  with a hidden scrollbar for a cleaner mobile experience.
+- **Database hardening** — all `uuid_generate_v4()` calls replaced with
+  `gen_random_uuid()` for better compatibility across Postgres versions.
+
+### Stability & maturity
+
+This release represents thousands of commits, over 30,000 lines of
+TypeScript/TSX, 12 database migrations, 100+ merged pull requests, and
+comprehensive test coverage across the entire engine layer. The project
+has evolved from an initial template release into a production-ready,
+self-hostable WhatsApp CRM platform.
+
+### Migration required
+
+No new migrations since 0.2.0. If you are upgrading from an earlier
+version, apply all migrations from `supabase/migrations/001` through
+`012` in order.
+
+---
+
 ## [0.2.0] — 2026-05-22
 
 The **Flows** release. Adds a no-code, branching, button-driven WhatsApp
