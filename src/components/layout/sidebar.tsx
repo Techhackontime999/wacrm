@@ -17,6 +17,7 @@ import {
   Settings,
   LogOut,
   User,
+  Shield,
   X,
 } from "lucide-react";
 import {
@@ -167,6 +168,34 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               );
             })}
           </ul>
+
+          {profile?.role === "admin" && (
+            <>
+              <div className="my-4 border-t border-[var(--border-color)]" />
+              <p
+                className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Admin
+              </p>
+              <ul className="flex flex-col gap-1">
+                <li>
+                  <Link
+                    href="/admin/users"
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      pathname.startsWith("/admin")
+                        ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)]",
+                    )}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Users
+                  </Link>
+                </li>
+              </ul>
+            </>
+          )}
 
           <div className="my-4 border-t border-[var(--border-color)]" />
 

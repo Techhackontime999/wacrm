@@ -22,7 +22,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -31,6 +31,19 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_approved")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (profile && profile.is_approved !== true) {
+        router.push("/approval-pending");
+        return;
+      }
     }
 
     router.push("/dashboard");

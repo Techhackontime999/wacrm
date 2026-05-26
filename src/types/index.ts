@@ -5,6 +5,7 @@ export interface Profile {
   email: string;
   avatar_url?: string;
   role: string;
+  is_approved?: boolean;
   /**
    * Opted-in beta feature keys for this account. The column survives
    * for future beta gates; no current feature reads it (Flows was

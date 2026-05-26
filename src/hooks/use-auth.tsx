@@ -17,6 +17,7 @@ interface Profile {
   email: string;
   avatar_url: string | null;
   role: string | null;
+  is_approved: boolean | null;
   /**
    * Opted-in beta feature keys for this account. No current feature
    * reads this — Flows was the last user and went to soft-GA in PR
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, avatar_url, role, beta_features")
+        .select("id, full_name, email, avatar_url, role, beta_features, is_approved")
         .eq("user_id", userId)
         .maybeSingle();
 

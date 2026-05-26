@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, profileLoading } = useAuth();
   const router = useRouter();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,6 +18,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!loading && !profileLoading && user && profile && profile.is_approved !== true) {
+      router.push("/approval-pending");
+    }
+  }, [user, profile, loading, profileLoading, router]);
 
   if (loading) {
     return (
@@ -36,6 +42,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return null;
+
+  if (profile && profile.is_approved !== true) return null;
 
   return (
     <div

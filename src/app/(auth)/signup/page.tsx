@@ -85,7 +85,10 @@ export default function SignupPage() {
               Check Your Email
             </h1>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              We sent a confirmation link to <strong style={{ color: "var(--accent-glow)" }}>{email}</strong>. Click it to activate your account, then sign in.
+              We sent a confirmation link to <strong style={{ color: "var(--accent-glow)" }}>{email}</strong>. Click it to activate your account.
+            </p>
+            <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+              After signing in, your account will require approval from an administrator before you can access the dashboard.
             </p>
             <Link
               href="/login"
