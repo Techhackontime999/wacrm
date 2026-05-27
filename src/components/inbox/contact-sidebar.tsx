@@ -14,6 +14,7 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,9 +22,11 @@ import { format } from "date-fns";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Back/close handler for mobile & tablet overlay mode. */
+  onClose?: () => void;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, onClose }: ContactSidebarProps) {
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
@@ -113,7 +116,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
   if (!contact) {
     return (
-      <div className="flex h-full w-70 items-center justify-center border-l border-slate-800 bg-slate-900">
+      <div className="flex h-full w-full items-center justify-center border-l border-slate-800 bg-slate-900">
         <p className="text-sm text-slate-500">Select a conversation</p>
       </div>
     );
@@ -123,7 +126,20 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-full w-70 flex-col border-l border-slate-800 bg-slate-900">
+    <div className="flex h-full w-full flex-col border-l border-slate-800 bg-slate-900">
+      {onClose && (
+        <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back to conversation"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <span className="text-sm font-medium text-slate-300">Contact info</span>
+        </div>
+      )}
       <ScrollArea className="flex-1">
         <div className="p-4">
           {/* Contact Info */}
@@ -262,12 +278,13 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                   className="flex-1 resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-primary/50"
                 />
                 <Button
-                  size="sm"
-                  className="h-auto bg-primary px-2 hover:bg-primary/90"
+                  size="icon-lg"
+                  className="bg-primary hover:bg-primary/90 max-sm:size-10"
                   onClick={handleAddNote}
                   disabled={!newNote.trim() || addingNote}
+                  aria-label="Add note"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="size-4" />
                 </Button>
               </div>
 

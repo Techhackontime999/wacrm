@@ -110,7 +110,7 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
     <img
       src={src ?? ""}
       alt={alt}
-      className="max-h-64 max-w-60 rounded-lg object-cover"
+      className="max-h-64 max-w-60 rounded-lg object-cover sm:max-w-72 lg:max-w-xs"
       onError={() => setError(true)}
     />
   );
@@ -148,7 +148,7 @@ function MessageContent({ message }: { message: Message }) {
             <video
               src={message.media_url}
               controls
-              className="max-h-64 max-w-60 rounded-lg"
+              className="max-h-64 max-w-60 rounded-lg sm:max-w-72 lg:max-w-xs"
             />
           ) : (
             <MediaUnavailable label="Video" />
@@ -165,7 +165,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <audio src={message.media_url} controls className="max-w-60" />
+            <audio src={message.media_url} controls className="max-w-60 sm:max-w-72" />
           ) : (
             <MediaUnavailable label="Audio" />
           )}

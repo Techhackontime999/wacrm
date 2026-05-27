@@ -87,6 +87,12 @@ interface MessageThreadProps {
    * working; the button is only rendered when this is provided.
    */
   onRefresh?: () => void;
+  /**
+   * Opens the contact profile sidebar/overlay on mobile & tablet.
+   * Rendered as the clickable avatar+name in the thread header,
+   * visible below xl (1280px). Above that the sidebar sits permanently.
+   */
+  onContactInfoClick?: () => void;
 }
 
 function formatDateSeparator(dateStr: string): string {
@@ -143,6 +149,7 @@ export function MessageThread({
   onBack,
   resyncToken = 0,
   onRefresh,
+  onContactInfoClick,
 }: MessageThreadProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -707,7 +714,7 @@ export function MessageThread({
     <div className={cn("flex flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid bg-slate-900 sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-slate-900 px-3 py-3 sm:px-4">
+      <div className="flex items-center justify-between gap-1 border-b border-slate-800 bg-slate-900 px-2 py-3 sm:gap-2 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
               conversation list is always visible next to the thread. */}
@@ -721,13 +728,32 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-white">{displayName}</h2>
-            <p className="truncate text-xs text-slate-400">{contact.phone}</p>
-          </div>
+          {onContactInfoClick ? (
+            <button
+              type="button"
+              onClick={onContactInfoClick}
+              aria-label="Open contact info"
+              className="flex items-center gap-2 sm:gap-3 xl:cursor-default"
+            >
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 text-left">
+                <h2 className="truncate text-sm font-semibold text-white">{displayName}</h2>
+                <p className="truncate text-xs text-slate-400">{contact.phone}</p>
+              </div>
+            </button>
+          ) : (
+            <>
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold text-white">{displayName}</h2>
+                <p className="truncate text-xs text-slate-400">{contact.phone}</p>
+              </div>
+            </>
+          )}
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
           <Badge
@@ -743,6 +769,7 @@ export function MessageThread({
         </div>
 
         <div className="flex items-center gap-2">
+
           {/* Manual refresh — forces a refetch of the messages + the
               conversation list (the parent bumps its resyncToken). Useful
               when realtime missed an event or the agent just wants to be
@@ -799,7 +826,7 @@ export function MessageThread({
               )}
             >
               <UserPlus className="h-3 w-3" />
-              <span className="hidden sm:inline">{assignLabel}</span>
+              <span className="hidden md:inline">{assignLabel}</span>
               <ChevronDown className="h-3 w-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -848,7 +875,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />

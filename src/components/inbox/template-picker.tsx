@@ -148,7 +148,7 @@ export function TemplatePicker({
         </DialogHeader>
 
         {!selected ? (
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+          <div className="max-h-[50vh] space-y-2 overflow-y-auto sm:max-h-[60vh]">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />

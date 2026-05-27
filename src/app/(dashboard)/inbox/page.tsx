@@ -494,9 +494,20 @@ export default function InboxPage() {
   // it back to the list. On lg+ both panes render side-by-side as
   // before, unchanged.
   const hasActiveConv = !!activeConversation;
+  // Contact sidebar toggle for screens below xl (1280px). On xl+ the
+  // sidebar sits permanently next to the thread. Below xl the sidebar
+  // replaces the thread when the user taps the name/avatar in the
+  // header — same single-pane pattern as the conv-list / thread swap.
+  const [showContactSidebar, setShowContactSidebar] = useState(false);
+  const handleContactInfoClick = useCallback(() => {
+    setShowContactSidebar(true);
+  }, []);
+  const handleCloseContactSidebar = useCallback(() => {
+    setShowContactSidebar(false);
+  }, []);
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
+    <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
           so it pushes the panels down instead of overlapping them. */}
       {whatsappConnected === false && (
@@ -533,8 +544,8 @@ export default function InboxPage() {
             (shows its own empty-state if no thread is picked yet). */}
         <div
           className={cn(
-            "flex h-full flex-1 lg:flex",
-            hasActiveConv ? "flex" : "hidden lg:flex",
+            "flex h-full min-w-0 flex-1 xl:flex",
+            hasActiveConv && !showContactSidebar ? "flex" : "hidden xl:flex",
           )}
         >
           <MessageThread
@@ -549,12 +560,20 @@ export default function InboxPage() {
             onBack={handleCloseConversation}
             resyncToken={resyncToken}
             onRefresh={handleManualRefresh}
+            onContactInfoClick={handleContactInfoClick}
           />
         </div>
 
-        {/* Right panel: Contact sidebar — desktop only. */}
-        <div className="hidden lg:block">
-          <ContactSidebar contact={activeContact} />
+        {/* Right panel: Contact sidebar.
+            On xl+ (1280px+) it sits permanently next to the thread.
+            Below xl it replaces the thread when toggled via the header button. */}
+        <div
+          className={cn(
+            "h-full min-w-0",
+            showContactSidebar ? "flex flex-1 xl:flex-none xl:w-70 2xl:w-80" : "hidden xl:block xl:w-70 2xl:w-80",
+          )}
+        >
+          <ContactSidebar contact={activeContact} onClose={handleCloseContactSidebar} />
         </div>
       </div>
     </div>

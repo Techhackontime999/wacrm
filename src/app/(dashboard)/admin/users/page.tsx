@@ -126,14 +126,14 @@ export default function AdminUsersPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--hover-bg)' }}>
                 <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>User</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>Role</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>Status</th>
-                <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>Joined</th>
+                <th className="hidden px-4 py-3 text-left font-medium md:table-cell" style={{ color: 'var(--text-secondary)' }}>Role</th>
+                <th className="hidden px-4 py-3 text-left font-medium sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                <th className="hidden px-4 py-3 text-left font-medium lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Joined</th>
                 <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--text-secondary)' }}>Actions</th>
               </tr>
             </thead>
@@ -147,22 +147,22 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium"
                         style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
                       >
                         {u.full_name?.charAt(0)?.toUpperCase() ?? u.email?.charAt(0)?.toUpperCase() ?? 'U'}
                       </div>
-                      <div>
-                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium" style={{ color: 'var(--text-primary)' }}>
                           {u.full_name || 'Unknown'}
                         </p>
-                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <p className="truncate text-xs" style={{ color: 'var(--text-secondary)' }}>
                           {u.email}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="hidden px-4 py-3 md:table-cell">
                     <span
                       className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
                       style={{
@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="hidden px-4 py-3 sm:table-cell">
                     {u.is_approved ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: '#22c55e' }}>
                         <Check className="h-3.5 w-3.5" />
@@ -187,7 +187,7 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <td className="hidden px-4 py-3 text-xs lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -206,7 +206,7 @@ export default function AdminUsersPage() {
                             ) : (
                               <UserCheck className="h-3.5 w-3.5" />
                             )}
-                            Approve
+                            <span className="hidden sm:inline">Approve</span>
                           </button>
                         ) : (
                           <button
@@ -224,7 +224,7 @@ export default function AdminUsersPage() {
                             ) : (
                               <UserX className="h-3.5 w-3.5" />
                             )}
-                            Revoke
+                            <span className="hidden sm:inline">Revoke</span>
                           </button>
                         )}
                       </div>

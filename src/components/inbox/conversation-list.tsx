@@ -147,9 +147,9 @@ export function ConversationList({
     // w-full on mobile so the list occupies the whole viewport when it's
     // the single pane showing; fixed 320px on desktop where it shares the
     // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900 lg:w-80">
+    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900 lg:w-80 xl:w-96">
       {/* Search + Filter */}
-      <div className="space-y-2 border-b border-slate-800 p-3">
+      <div className="space-y-2 border-b border-slate-800 p-3 max-sm:p-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
@@ -243,7 +243,7 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-800/50",
+        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-800/50 max-sm:gap-2 max-sm:px-2",
         isActive && "border-l-2 border-primary bg-slate-800/70"
       )}
     >

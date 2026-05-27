@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, KeyboardEvent } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Send, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ export function MessageComposer({
   }, [text, sending, sessionExpired, onSend, replyTo?.id]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
@@ -107,12 +107,12 @@ export function MessageComposer({
       <div className="flex items-end gap-2">
         <Button
           variant="ghost"
-          size="sm"
-          className="h-9 w-9 shrink-0 p-0 text-slate-400 hover:text-white"
+          size="icon-lg"
+          className="text-slate-400 hover:text-white max-sm:size-10"
           onClick={onOpenTemplates}
           title="Send template"
         >
-          <LayoutTemplate className="h-4 w-4" />
+          <LayoutTemplate className="size-4" />
         </Button>
 
         <textarea
@@ -123,30 +123,31 @@ export function MessageComposer({
           placeholder={
             sessionExpired
               ? "Session expired - use a template"
-              : "Type a message... (Shift+Enter for new line)"
+              : "Type a message..."
           }
           disabled={sessionExpired}
           rows={1}
           className={cn(
-            "flex-1 resize-none rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-primary/50",
+            "flex-1 resize-none overflow-hidden rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-primary/50 [&::-webkit-scrollbar]:hidden",
             sessionExpired && "cursor-not-allowed opacity-50"
           )}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         />
 
         <Button
-          size="sm"
-          className="h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40"
+          size="icon-lg"
+          className="bg-primary hover:bg-primary/90 disabled:opacity-40 max-sm:size-10"
           disabled={!text.trim() || sessionExpired || sending}
           onClick={handleSend}
         >
-          <Send className="h-4 w-4" />
+          <Send className="size-4" />
         </Button>
       </div>
 
       {/* Hint sits outside the flex row so its height doesn't push
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge (w-9 button + gap-2 = 44px). */}
-      <p className="mt-1 pl-11 text-[10px] text-slate-600">
+      <p className="mt-1 pl-11 text-[10px] text-slate-600 max-sm:pl-0 max-sm:text-center">
         Type &apos;/&apos; for quick replies
       </p>
     </div>

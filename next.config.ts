@@ -93,15 +93,11 @@ const nextConfig: NextConfig = {
    */
   async headers() {
     return [
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
+      // NOTE: /_next/static/* cache is intentionally NOT set here.
+      // Next.js manages it internally with content-hashed filenames;
+      // a custom override causes stale-bundle errors like the one
+      // this comment was written for (removed `Info` from a lucide-react
+      // import but the browser served the old immutable chunk).
       {
         source: "/api/:path*",
         headers: [{ key: "Cache-Control", value: "no-store" }],
