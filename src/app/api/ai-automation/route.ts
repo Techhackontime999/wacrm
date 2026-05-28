@@ -365,7 +365,7 @@ function extractFirstParam(args: Record<string, unknown>, ...keys: string[]): st
   return undefined
 }
 
-async function resolveIntent(message: string, history: AiMessage[] = []): Promise<{ parsed: ParsedIntent; replyOverride?: string }> {
+async function resolveIntent(message: string, history: AiMessage[] = []): Promise<{ parsed: ParsedIntent; replyOverride?: string; args?: Record<string, unknown> }> {
   const apiKey = process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY
   if (!apiKey) {
     const parsed = parseIntent(message)
@@ -410,7 +410,7 @@ async function resolveIntent(message: string, history: AiMessage[] = []): Promis
 
     const target = extractFirstParam(args, 'name', 'name_or_phone', 'contact', 'title')
 
-    return { parsed: { intent, target, params: [] } }
+    return { parsed: { intent, target, params: [] }, args }
   } catch (err) {
     console.error('AI intent resolution failed, falling back to regex:', err)
     const parsed = parseIntent(message)
@@ -559,15 +559,17 @@ async function handleLogsAutomation(userId: string, target: string) {
   return { automation: a, logs: (data ?? []) as AutomationLog[] }
 }
 
-async function handleAddAutomationStep(userId: string, target: string, message: string) {
+async function handleAddAutomationStep(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const a = await findAutomation(userId, target)
   if (!a) return null
-  const stepTypeMatch = message.match(/(?:step|type)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)
-  const stepType = stepTypeMatch?.[1]?.trim() ?? null
+  const stepType = handlerArgs?.step_type as string | undefined
+    ?? message.match(/(?:step|type)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)?.[1]?.trim()
+    ?? null
   if (!stepType) return null
   const resolvedType = STEP_LABELS[stepType.toLowerCase()] ?? stepType.toLowerCase()
-  const configMatch = message.match(/(?:config|with|text|message)\s+[""](.+?)[""]/i)
-  const configText = configMatch?.[1] ?? null
+  const configText = handlerArgs?.config as string | undefined
+    ?? message.match(/(?:config|with|text|message)\s+[""](.+?)[""]/i)?.[1]
+    ?? null
   const stepConfig: Record<string, unknown> = {}
   if (resolvedType === 'send_message') stepConfig.text = configText ?? 'Hello!'
   else if (resolvedType === 'add_tag') stepConfig.tag_id = configText ?? ''
@@ -580,11 +582,14 @@ async function handleAddAutomationStep(userId: string, target: string, message: 
   return { automation: a, step }
 }
 
-async function handleRemoveAutomationStep(userId: string, target: string, message: string) {
+async function handleRemoveAutomationStep(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const a = await findAutomation(userId, target)
   if (!a) return null
-  const posMatch = message.match(/(?:step|position|#)\s*(\d+)/i) ?? message.match(/\b(\d+)\b/)
-  const pos = posMatch ? parseInt(posMatch[1], 10) : null
+  const pos = handlerArgs?.position as number | undefined
+    ?? (() => {
+      const m = message.match(/(?:step|position|#)\s*(\d+)/i) ?? message.match(/\b(\d+)\b/)
+      return m ? parseInt(m[1], 10) : null
+    })()
   if (!pos) return null
   const { data: steps } = await db()
     .from('automation_steps').select('id, position').eq('automation_id', a.id).order('position')
@@ -606,10 +611,11 @@ async function handleGetContact(userId: string, target: string) {
   return findContact(userId, target)
 }
 
-async function handleCreateContact(userId: string, message: string, targetName?: string) {
+async function handleCreateContact(userId: string, message: string, targetName?: string, handlerArgs?: Record<string, unknown>) {
   const quoted = extractQuoted(message)
   const name = quoted[0]
     ?? targetName
+    ?? (handlerArgs?.name as string | undefined)
     ?? (() => {
       const m1 = message.match(/(?:with\s+name\s+|name\s+is\s+|name\s+|named\s+|called\s+)(\w+(?:\s+\w+)*?)(?=\s+(?:and|his|her|their|with|phone|email|company|number)|\s*(?:$|is))/i)
       if (m1) return m1[1].trim()
@@ -619,34 +625,45 @@ async function handleCreateContact(userId: string, message: string, targetName?:
       if (m2 && !/^(?:with|phone|email|company|number|called|named|name|a|new)$/i.test(m2[1])) return m2[1].trim()
       return null
     })()
-  const phoneMatch = message.match(/(?:phone|number|tel)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
-    ?? message.match(/(?:phone|number|tel)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
-    ?? message.match(/\b(\d{10,15})\b/)
-  const emailMatch = message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)
-  const companyMatch = message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)
-  const phone = phoneMatch ? phoneMatch[1].replace(/[\s-]/g, '') : null
+  const phone = handlerArgs?.phone as string | undefined
+    ?? (() => {
+      const m = message.match(/(?:phone|number|tel)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
+        ?? message.match(/(?:phone|number|tel)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
+        ?? message.match(/\b(\d{10,15})\b/)
+      return m ? m[1].replace(/[\s-]/g, '') : null
+    })()
+  const email = handlerArgs?.email as string | undefined
+    ?? message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)?.[1] ?? null
+  const company = handlerArgs?.company as string | undefined
+    ?? message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)?.[1] ?? null
   if (!name || !phone) return null
   const { data } = await db()
     .from('contacts')
-    .insert({ user_id: userId, name, phone, email: emailMatch?.[1] ?? null, company: companyMatch?.[1] ?? null })
+    .insert({ user_id: userId, name, phone, email, company })
     .select().single()
   return data as Contact | null
 }
 
-async function handleUpdateContact(userId: string, target: string, message: string) {
+async function handleUpdateContact(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const c = await findContact(userId, target)
   if (!c) return null
   const update: Record<string, string | null> = {}
-  const emailMatch = message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)
-  const companyMatch = message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)
-  const nameMatch = message.match(/(?:name|rename)[:\s]*[""]?(.+?)[""]?$/i)
-  const phoneMatch = message.match(/(?:phone|number)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
-    ?? message.match(/(?:phone|number)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
-    ?? message.match(/\b(\d{10,15})\b/)
-  if (emailMatch) update.email = emailMatch[1]
-  if (companyMatch) update.company = companyMatch[1].trim()
-  if (nameMatch && !message.toLowerCase().includes('update contact')) update.name = nameMatch[1].trim()
-  if (phoneMatch) update.phone = phoneMatch[1].replace(/[\s-]/g, '')
+  const email = handlerArgs?.email as string | undefined ?? message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)?.[1] ?? null
+  const company = handlerArgs?.company as string | undefined ?? message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)?.[1] ?? null
+  const name = handlerArgs?.name as string | undefined ?? (() => {
+    const m = message.match(/(?:name|rename)[:\s]*[""]?(.+?)[""]?$/i)
+    return m && !message.toLowerCase().includes('update contact') ? m[1].trim() : null
+  })()
+  const phone = handlerArgs?.phone as string | undefined ?? (() => {
+    const m = message.match(/(?:phone|number)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
+      ?? message.match(/(?:phone|number)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
+      ?? message.match(/\b(\d{10,15})\b/)
+    return m ? m[1].replace(/[\s-]/g, '') : null
+  })()
+  if (email) update.email = email
+  if (company) update.company = company
+  if (name) update.name = name
+  if (phone) update.phone = phone
   if (Object.keys(update).length === 0) return null
   await db().from('contacts').update(update).eq('id', c.id)
   return { ...c, ...update } as Contact
@@ -659,11 +676,12 @@ async function handleDeleteContact(userId: string, target: string) {
   return c
 }
 
-async function handleTagContact(userId: string, target: string, message: string) {
+async function handleTagContact(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const c = await findContact(userId, target)
   if (!c) return null
-  const m = message.match(/(?:with|tag)\s+[""]?(.+?)[""]?$/i)
-  const tagName = m?.[1]?.trim() ?? extractQuoted(message).slice(-1)[0]
+  const tagName = handlerArgs?.tag as string | undefined
+    ?? message.match(/(?:with|tag)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim()
+    ?? extractQuoted(message).slice(-1)[0]
   if (!tagName) return null
   let tag = await findTag(userId, tagName)
   if (!tag) {
@@ -677,11 +695,11 @@ async function handleTagContact(userId: string, target: string, message: string)
   return { contact: c, tag }
 }
 
-async function handleUntagContact(userId: string, target: string, message: string) {
+async function handleUntagContact(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const c = await findContact(userId, target)
   if (!c) return null
-  const m = message.match(/(?:tag|from)\s+[""]?(.+?)[""]?$/i)
-  const tagName = m?.[1]?.trim()
+  const tagName = handlerArgs?.tag as string | undefined
+    ?? message.match(/(?:tag|from)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim()
   if (!tagName) return null
   const tag = await findTag(userId, tagName)
   if (tag) await db().from('contact_tags').delete().eq('contact_id', c.id).eq('tag_id', tag.id)
@@ -708,11 +726,12 @@ async function handleGetConversation(userId: string, target: string) {
   return { conversation: conv, messages: messages ?? [] }
 }
 
-async function handleSendMessage(userId: string, target: string, message: string) {
+async function handleSendMessage(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const conv = await findConversation(userId, target)
   if (!conv) return null
-  const textMatch = message.match(/(?:saying|says|text)\s+[""](.+?)[""]/i)
-  const text = textMatch?.[1] ?? extractQuoted(message).slice(-1)[0]
+  const text = handlerArgs?.text as string | undefined
+    ?? message.match(/(?:saying|says|text)\s+[""](.+?)[""]/i)?.[1]
+    ?? extractQuoted(message).slice(-1)[0]
   if (!text) return null
   const { data: msg } = await db()
     .from('messages')
@@ -736,10 +755,10 @@ async function handleReopenConversation(userId: string, target: string) {
   return { ...conv, status: 'open' } as Conversation
 }
 
-async function handleAssignConversation(userId: string, target: string, agentName: string | undefined) {
+async function handleAssignConversation(userId: string, target: string, agentName: string | undefined, handlerArgs?: Record<string, unknown>) {
   const conv = await findConversation(userId, target)
   if (!conv) return null
-  const agent = agentName ?? null
+  const agent = agentName ?? (handlerArgs?.agent as string | undefined) ?? null
   if (!agent) return { conversation: conv, assigned: false, reason: 'No agent specified' }
   const { data: profiles } = await db()
     .from('profiles').select('id').ilike('full_name', `%${agent}%`).limit(1)
@@ -792,13 +811,17 @@ async function handleListPipelines(userId: string) {
   return (data ?? []) as Pipeline[]
 }
 
-async function handleCreatePipeline(userId: string, message: string) {
+async function handleCreatePipeline(userId: string, message: string, handlerArgs?: Record<string, unknown>) {
   const quoted = extractQuoted(message)
-  const name = quoted[0] ?? message.match(/(?:pipeline|called|named)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)?.[1]?.trim() ?? null
+  const name = quoted[0]
+    ?? (handlerArgs?.name as string | undefined)
+    ?? message.match(/(?:pipeline|called|named)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)?.[1]?.trim()
+    ?? null
   if (!name) return null
-  const stagesMatch = message.match(/(?:stages?|steps?)\s*:\s*[""]?(.+?)[""]?(?:\s+with|\s*$)/i)
+  const stagesStr = handlerArgs?.stages as string | undefined
+    ?? message.match(/(?:stages?|steps?)\s*:\s*[""]?(.+?)[""]?(?:\s+with|\s*$)/i)?.[1]
   const defaultStages = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed']
-  const stageNames = stagesMatch ? stagesMatch[1].split(',').map((s) => s.trim()).filter(Boolean) : defaultStages
+  const stageNames = stagesStr ? stagesStr.split(',').map((s) => s.trim()).filter(Boolean) : defaultStages
   const { data: pipeline } = await db()
     .from('pipelines').insert({ user_id: userId, name }).select().single()
   if (pipeline) {
@@ -815,11 +838,14 @@ async function handleDeletePipeline(userId: string, target: string) {
   return p
 }
 
-async function handleAddPipelineStage(userId: string, target: string, message: string) {
+async function handleAddPipelineStage(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const p = await findPipeline(userId, target)
   if (!p) return null
   const quoted = extractQuoted(message)
-  const stageName = quoted[0] ?? message.match(/(?:stage|step)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim() ?? null
+  const stageName = quoted[0]
+    ?? (handlerArgs?.stage as string | undefined)
+    ?? message.match(/(?:stage|step)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim()
+    ?? null
   if (!stageName) return { pipeline: p, added: false }
   const { data: stages } = await db()
     .from('pipeline_stages').select('position').eq('pipeline_id', p.id).order('position', { ascending: false }).limit(1)
@@ -850,11 +876,12 @@ async function handleCreateDeal(userId: string, message: string) {
   return data as Deal | null
 }
 
-async function handleMoveDeal(userId: string, target: string, message: string) {
+async function handleMoveDeal(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const deal = await findDeal(userId, target)
   if (!deal) return null
-  const stageMatch = message.match(/(?:to|into)\s+[""](.+?)[""]/i)
-  const stageName = stageMatch?.[1] ?? extractQuoted(message).slice(-1)[0]
+  const stageName = handlerArgs?.stage as string | undefined
+    ?? message.match(/(?:to|into)\s+[""](.+?)[""]/i)?.[1]
+    ?? extractQuoted(message).slice(-1)[0]
   if (!stageName) return { deal, moved: false }
   const { data: stages } = await db()
     .from('pipeline_stages').select('id, name, position').eq('pipeline_id', deal.pipeline_id).order('position')
@@ -883,16 +910,21 @@ async function handleListTags(userId: string) {
   return (data ?? []) as Tag[]
 }
 
-async function handleCreateTag(userId: string, message: string, targetName?: string) {
+async function handleCreateTag(userId: string, message: string, targetName?: string, handlerArgs?: Record<string, unknown>) {
   const quoted = extractQuoted(message)
   const name = quoted[0]
     ?? targetName
+    ?? (handlerArgs?.name as string | undefined)
     ?? message.match(/(?:called\s+|named\s+|tag\s+)(\w+(?:\s+\w+)*?)(?:\s+with|\s*$)/i)?.[1]?.trim()
     ?? null
   if (!name) return null
-  const colorMatch = message.match(/(?:color)[:\s]*#?([\w]{3,8})/i)
+  const color = handlerArgs?.color as string | undefined
+    ?? (() => {
+      const m = message.match(/(?:color)[:\s]*#?([\w]{3,8})/i)
+      return m ? `#${m[1]}` : '#6366f1'
+    })()
   const { data } = await db()
-    .from('tags').insert({ user_id: userId, name, color: colorMatch ? `#${colorMatch[1]}` : '#6366f1' }).select().single()
+    .from('tags').insert({ user_id: userId, name, color }).select().single()
   return data as Tag | null
 }
 
@@ -903,11 +935,14 @@ async function handleDeleteTag(userId: string, target: string) {
   return tag
 }
 
-async function handleAddContactNote(userId: string, target: string, message: string) {
+async function handleAddContactNote(userId: string, target: string, message: string, handlerArgs?: Record<string, unknown>) {
   const contact = await findContact(userId, target)
   if (!contact) return null
   const quoted = extractQuoted(message)
-  const noteText = quoted[0] ?? message.match(/(?:note|notes?)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim() ?? null
+  const noteText = handlerArgs?.note as string | undefined
+    ?? quoted[0]
+    ?? message.match(/(?:note|notes?)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim()
+    ?? null
   if (!noteText) return null
   const { data } = await db()
     .from('contact_notes').insert({ contact_id: contact.id, user_id: userId, note_text: noteText }).select().single()
@@ -959,7 +994,7 @@ export async function POST(request: Request) {
 
   const message = String(body.message).trim()
   const history: AiMessage[] = body.history ?? []
-  const { parsed, replyOverride } = await resolveIntent(message, history)
+  const { parsed, replyOverride, args } = await resolveIntent(message, history)
   let { intent, target, params } = parsed
 
   try {
@@ -1107,7 +1142,7 @@ export async function POST(request: Request) {
 
       case 'add_automation_step': {
         if (!target) return NextResponse.json({ reply: 'Which automation to add a step to? Try "add a step to automation \\"Name\\"."' })
-        const result = await handleAddAutomationStep(user.id, target, message)
+        const result = await handleAddAutomationStep(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: `Automation "${target}" not found.` })
         return NextResponse.json({
           reply: `Added step to **${(result as any).automation.name}**. Say "show automation ${(result as any).automation.name}" to see it.`,
@@ -1117,7 +1152,7 @@ export async function POST(request: Request) {
 
       case 'remove_automation_step': {
         if (!target) return NextResponse.json({ reply: 'Which automation to remove a step from?' })
-        const result = await handleRemoveAutomationStep(user.id, target, message)
+        const result = await handleRemoveAutomationStep(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: `Automation "${target}" not found.` })
         const removed = (result as any).removed
         if (!removed) return NextResponse.json({ reply: 'Could not remove step. Check the step number is valid.' })
@@ -1152,7 +1187,7 @@ export async function POST(request: Request) {
       }
 
       case 'create_contact': {
-        const c = await handleCreateContact(user.id, message, target)
+        const c = await handleCreateContact(user.id, message, target, args)
         if (!c) return NextResponse.json({ reply: 'Usage: "create contact \\"Name\\" with phone 1234567890" (name and phone required).' })
         return NextResponse.json({
           reply: `Created contact **${c.name}** (${c.phone}).`,
@@ -1162,7 +1197,7 @@ export async function POST(request: Request) {
 
       case 'update_contact': {
         if (!target) return NextResponse.json({ reply: 'Which contact to update?' })
-        const c = await handleUpdateContact(user.id, target, message)
+        const c = await handleUpdateContact(user.id, target, message, args)
         if (!c) return NextResponse.json({ reply: `Could not update "${target}".` })
         return NextResponse.json({
           reply: `Updated **${c.name ?? 'contact'}**.`,
@@ -1182,7 +1217,7 @@ export async function POST(request: Request) {
 
       case 'tag_contact': {
         if (!target) return NextResponse.json({ reply: 'Usage: "tag contact [name] with [tag name]".' })
-        const result = await handleTagContact(user.id, target, message)
+        const result = await handleTagContact(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: 'Contact not found.' })
         return NextResponse.json({
           reply: `Tagged **${result.contact.name}** with **${result.tag?.name ?? 'tag'}**.`,
@@ -1192,7 +1227,7 @@ export async function POST(request: Request) {
 
       case 'untag_contact': {
         if (!target) return NextResponse.json({ reply: 'Usage: "remove tag [tag name] from contact [name]".' })
-        const result = await handleUntagContact(user.id, target, message)
+        const result = await handleUntagContact(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: 'Contact not found.' })
         return NextResponse.json({
           reply: `Removed **${result.tag?.name ?? 'tag'}** from **${result.contact.name}**.`,
@@ -1202,7 +1237,7 @@ export async function POST(request: Request) {
 
       case 'add_contact_note': {
         if (!target) return NextResponse.json({ reply: 'Usage: "add a note to contact [name] saying \\"the note\\"."' })
-        const result = await handleAddContactNote(user.id, target, message)
+        const result = await handleAddContactNote(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: 'Contact not found or note text missing.' })
         return NextResponse.json({
           reply: `Added note to **${(result.contact as any).name ?? target}**.`,
@@ -1254,7 +1289,7 @@ export async function POST(request: Request) {
 
       case 'send_message': {
         if (!target) return NextResponse.json({ reply: 'Usage: "send message to [name] saying \\"your text\\"."' })
-        const result = await handleSendMessage(user.id, target, message)
+        const result = await handleSendMessage(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: `No conversation with "${target}" found.` })
         return NextResponse.json({
           reply: `Message sent to **${(result.conversation as any).contact?.name ?? target}**.`,
@@ -1285,8 +1320,8 @@ export async function POST(request: Request) {
       case 'assign_conversation': {
         if (!target) return NextResponse.json({ reply: 'Usage: "assign conversation [name] to [agent]".' })
         const agentMatch = message.match(/(?:to|agent)\s+[""]?(.+?)[""]?$/i)
-        const agentName = agentMatch?.[1]?.trim()
-        const result = await handleAssignConversation(user.id, target, agentName)
+        const agentName = agentMatch?.[1]?.trim() ?? (args?.agent as string | undefined)
+        const result = await handleAssignConversation(user.id, target, agentName, args)
         if (!result) return NextResponse.json({ reply: 'Conversation not found.' })
         const assigned = (result as any).assigned
         return NextResponse.json({
@@ -1354,7 +1389,7 @@ export async function POST(request: Request) {
       }
 
       case 'create_pipeline': {
-        const result = await handleCreatePipeline(user.id, message)
+        const result = await handleCreatePipeline(user.id, message, args)
         if (!result) return NextResponse.json({ reply: 'Usage: "create a pipeline called \\"Sales\\" with stages Lead,Qualified,Closed".' })
         const { pipeline, stages } = result
         return NextResponse.json({
@@ -1375,7 +1410,7 @@ export async function POST(request: Request) {
 
       case 'add_pipeline_stage': {
         if (!target) return NextResponse.json({ reply: 'Which pipeline to add a stage to?' })
-        const result = await handleAddPipelineStage(user.id, target, message)
+        const result = await handleAddPipelineStage(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: `Pipeline "${target}" not found.` })
         const s = result.stage as { name: string } | null
         return NextResponse.json({
@@ -1410,7 +1445,7 @@ export async function POST(request: Request) {
 
       case 'move_deal': {
         if (!target) return NextResponse.json({ reply: 'Which deal to move?' })
-        const result = await handleMoveDeal(user.id, target, message)
+        const result = await handleMoveDeal(user.id, target, message, args)
         if (!result) return NextResponse.json({ reply: `Deal "${target}" not found.` })
         if ('moved' in result && !result.moved) return NextResponse.json({ reply: 'Could not find the target stage. Use a stage name from the pipeline.' })
         return NextResponse.json({
@@ -1443,7 +1478,7 @@ export async function POST(request: Request) {
       }
 
       case 'create_tag': {
-        const t = await handleCreateTag(user.id, message, target)
+        const t = await handleCreateTag(user.id, message, target, args)
         if (!t) return NextResponse.json({ reply: 'Usage: "create a tag \\"Name\\"".' })
         return NextResponse.json({
           reply: `Created tag **${t.name}**.`,
