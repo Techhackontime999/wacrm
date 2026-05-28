@@ -526,8 +526,8 @@ export default function InboxPage() {
         {/* List panel */}
         <div
           className={cn(
-            "min-w-0",
-            hasActiveConv ? "hidden md:block" : "block",
+            "flex min-w-0 flex-col",
+            hasActiveConv ? "hidden md:flex" : "",
           )}
         >
           <ConversationList
@@ -542,8 +542,8 @@ export default function InboxPage() {
         {/* Thread panel */}
         <div
           className={cn(
-            "min-w-0",
-            hasActiveConv && !showContactSidebar ? "block" : "hidden md:block",
+            "flex min-w-0 flex-col",
+            hasActiveConv && !showContactSidebar ? "" : "hidden md:flex",
           )}
         >
           <MessageThread
@@ -565,8 +565,8 @@ export default function InboxPage() {
         {/* Sidebar panel */}
         <div
           className={cn(
-            "min-w-0",
-            showContactSidebar ? "block lg:block" : "hidden lg:block",
+            "flex min-w-0 flex-col",
+            showContactSidebar ? "" : "hidden lg:flex",
           )}
         >
           <ContactSidebar contact={activeContact} onClose={handleCloseContactSidebar} />
