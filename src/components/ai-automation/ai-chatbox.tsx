@@ -80,6 +80,8 @@ export function AiChatbox() {
       action: { type: "ready", status: "success" },
     },
   ])
+  const messagesRef = useRef(messages)
+  useEffect(() => { messagesRef.current = messages }, [messages])
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -123,10 +125,13 @@ export function AiChatbox() {
     ])
 
     try {
+      const history = messagesRef.current
+        .filter((m) => m.content)
+        .map((m) => ({ role: m.role, content: m.content }))
       const res = await fetch("/api/ai-automation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, history }),
       })
 
       const data = await res.json()
@@ -195,7 +200,7 @@ export function AiChatbox() {
             <Bot className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white">AI CRM Assistant</h2>
+            <h2 className="text-sm font-semibold text-white">Neural Aurora CRM Assistant</h2>
             <p className="text-[11px] text-slate-400">Full CRM natural language control</p>
           </div>
         </div>
@@ -213,7 +218,7 @@ export function AiChatbox() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.05),transparent_50%)]"
       >
-        <div className="space-y-1 px-4 py-4">
+        <div className="space-y-1 px-3 py-3 sm:px-4 sm:py-4">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -300,7 +305,7 @@ export function AiChatbox() {
         </div>
       </div>
 
-      <div className="border-t border-slate-800/50 px-4 py-3">
+      <div className="hidden sm:block border-t border-slate-800/50 px-4 py-3">
         <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
           Quick Actions {hasSentMessage && <span className="text-slate-600">(click any)</span>}
         </p>
@@ -340,7 +345,7 @@ export function AiChatbox() {
         </div>
       </div>
 
-      <div className="border-t border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-sm">
+      <div className="border-t border-slate-800 bg-slate-900/50 px-3 py-2 backdrop-blur-sm sm:px-4 sm:py-3">
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}

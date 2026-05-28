@@ -369,6 +369,48 @@ export const CRM_TOOLS: ToolDefinition[] = [
   {
     type: "function",
     function: {
+      name: "create_pipeline",
+      description: "Create a new sales pipeline",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The pipeline name" },
+          stages: { type: "string", description: "Comma-separated list of stage names (optional, e.g. 'Lead,Qualified,Proposal,Closed')" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_pipeline",
+      description: "Delete a pipeline by name",
+      parameters: {
+        type: "object",
+        properties: { name: { type: "string", description: "The pipeline name to delete" } },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_pipeline_stage",
+      description: "Add a stage to an existing pipeline",
+      parameters: {
+        type: "object",
+        properties: {
+          pipeline: { type: "string", description: "The pipeline name" },
+          stage: { type: "string", description: "The new stage name" },
+        },
+        required: ["pipeline", "stage"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_broadcasts",
       description: "List all broadcasts",
       parameters: { type: "object", properties: {}, required: [] },
@@ -434,6 +476,115 @@ export const CRM_TOOLS: ToolDefinition[] = [
       name: "get_whatsapp_status",
       description: "Check if WhatsApp is connected and configured",
       parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_broadcast",
+      description: "Send a draft broadcast to all its recipients",
+      parameters: {
+        type: "object",
+        properties: { name: { type: "string", description: "The broadcast name" } },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_broadcast",
+      description: "Delete a broadcast by name",
+      parameters: {
+        type: "object",
+        properties: { name: { type: "string", description: "The broadcast name to delete" } },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_tag",
+      description: "Delete a tag by name",
+      parameters: {
+        type: "object",
+        properties: { name: { type: "string", description: "The tag name to delete" } },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_contact_note",
+      description: "Add a note to a contact",
+      parameters: {
+        type: "object",
+        properties: {
+          contact: { type: "string", description: "The contact's name or phone" },
+          note: { type: "string", description: "The note text" },
+        },
+        required: ["contact", "note"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_contact_notes",
+      description: "List notes for a contact",
+      parameters: {
+        type: "object",
+        properties: { contact: { type: "string", description: "The contact's name or phone" } },
+        required: ["contact"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "assign_conversation",
+      description: "Assign a conversation to an agent for handling",
+      parameters: {
+        type: "object",
+        properties: {
+          contact: { type: "string", description: "The contact's name or phone" },
+          agent: { type: "string", description: "The agent's name or email to assign to" },
+        },
+        required: ["contact", "agent"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_automation_step",
+      description: "Add a step to an existing automation",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The automation name" },
+          step_type: { type: "string", enum: ["send_message", "send_template", "add_tag", "remove_tag", "assign_conversation", "update_contact_field", "create_deal", "wait", "condition", "send_webhook", "close_conversation"], description: "The type of step to add" },
+          config: { type: "string", description: "A JSON string or description of the step configuration (e.g. '{\"text\":\"Hello!\"}' for send_message)" },
+        },
+        required: ["name", "step_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_automation_step",
+      description: "Remove a step from an automation by its position number",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The automation name" },
+          position: { type: "number", description: "The step number to remove (1-based)" },
+        },
+        required: ["name", "position"],
+      },
     },
   },
   {

@@ -262,6 +262,23 @@ const intentPatterns: { regex: RegExp; intent: string; group?: number }[] = [
   { regex: /what\s+can\s+you\s+do/i, intent: 'help' },
   { regex: /commands?/i, intent: 'help' },
   { regex: /guide/i, intent: 'help' },
+  { regex: /create\s+(a\s+)?(new\s+)?pipeline/i, intent: 'create_pipeline' },
+  { regex: /add\s+(a\s+)?pipeline/i, intent: 'create_pipeline' },
+  { regex: /delete\s+pipeline\s+(.+)/, intent: 'delete_pipeline', group: 1 },
+  { regex: /remove\s+pipeline\s+(.+)/, intent: 'delete_pipeline', group: 1 },
+  { regex: /add\s+(a\s+)?stage\s+(?:to\s+)?pipeline\s+(.+)/, intent: 'add_pipeline_stage', group: 2 },
+  { regex: /send\s+broadcast\s+(.+)/, intent: 'send_broadcast', group: 1 },
+  { regex: /start\s+broadcast\s+(.+)/, intent: 'send_broadcast', group: 1 },
+  { regex: /delete\s+broadcast\s+(.+)/, intent: 'delete_broadcast', group: 1 },
+  { regex: /delete\s+tag\s+(.+)/, intent: 'delete_tag', group: 1 },
+  { regex: /remove\s+tag\s+(.+?)(?:\s+from|\s*$)/, intent: 'delete_tag', group: 1 },
+  { regex: /add\s+(a\s+)?note\s+(?:to\s+)?contact\s+(.+)/, intent: 'add_contact_note', group: 2 },
+  { regex: /note\s+(?:for|about)\s+contact\s+(.+)/, intent: 'add_contact_note', group: 1 },
+  { regex: /(?:show|list|view)\s+notes?\s+(?:for|about|of)\s+contact\s+(.+)/, intent: 'list_contact_notes', group: 1 },
+  { regex: /assign\s+conversation\s+(?:with\s+)?(.+?)(?:\s+to\s+|$)/, intent: 'assign_conversation', group: 1 },
+  { regex: /add\s+(a\s+)?step\s+(?:to\s+)?automation\s+(.+)/, intent: 'add_automation_step', group: 2 },
+  { regex: /remove\s+(a\s+)?step\s+(?:from\s+)?automation\s+(.+)/, intent: 'remove_automation_step', group: 2 },
+  { regex: /delete\s+(a\s+)?step\s+(?:from\s+)?automation\s+(.+)/, intent: 'remove_automation_step', group: 2 },
 ]
 
 function parseIntent(message: string): ParsedIntent {
@@ -302,6 +319,8 @@ const TOOL_TO_INTENT: Record<string, string> = {
   deactivate_all_automations: 'deactivate_all',
   rename_automation: 'rename_automation',
   get_automation_logs: 'logs_automation',
+  add_automation_step: 'add_automation_step',
+  remove_automation_step: 'remove_automation_step',
   list_contacts: 'list_contacts',
   get_contact: 'get_contact',
   create_contact: 'create_contact',
@@ -309,21 +328,30 @@ const TOOL_TO_INTENT: Record<string, string> = {
   delete_contact: 'delete_contact',
   tag_contact: 'tag_contact',
   untag_contact: 'untag_contact',
+  add_contact_note: 'add_contact_note',
+  list_contact_notes: 'list_contact_notes',
   list_conversations: 'list_conversations',
   get_conversation: 'get_conversation',
   send_message: 'send_message',
   close_conversation: 'close_conversation',
   reopen_conversation: 'reopen_conversation',
+  assign_conversation: 'assign_conversation',
   list_deals: 'list_deals',
   create_deal: 'create_deal',
   move_deal: 'move_deal',
   mark_deal_won: 'status_deal',
   mark_deal_lost: 'status_deal',
   list_pipelines: 'list_pipelines',
+  create_pipeline: 'create_pipeline',
+  delete_pipeline: 'delete_pipeline',
+  add_pipeline_stage: 'add_pipeline_stage',
   list_broadcasts: 'list_broadcasts',
   create_broadcast: 'create_broadcast',
+  send_broadcast: 'send_broadcast',
+  delete_broadcast: 'delete_broadcast',
   list_tags: 'list_tags',
   create_tag: 'create_tag',
+  delete_tag: 'delete_tag',
   list_templates: 'list_templates',
   get_dashboard: 'dashboard',
   get_whatsapp_status: 'whatsapp_status',
@@ -337,7 +365,7 @@ function extractFirstParam(args: Record<string, unknown>, ...keys: string[]): st
   return undefined
 }
 
-async function resolveIntent(message: string): Promise<{ parsed: ParsedIntent; replyOverride?: string }> {
+async function resolveIntent(message: string, history: AiMessage[] = []): Promise<{ parsed: ParsedIntent; replyOverride?: string }> {
   const apiKey = process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY
   if (!apiKey) {
     const parsed = parseIntent(message)
@@ -349,6 +377,7 @@ async function resolveIntent(message: string): Promise<{ parsed: ParsedIntent; r
     const response = await callAi(
       [
         { role: 'system', content: systemPrompt },
+        ...history,
         { role: 'user', content: message },
       ],
       CRM_TOOLS as unknown as object[],
@@ -530,6 +559,41 @@ async function handleLogsAutomation(userId: string, target: string) {
   return { automation: a, logs: (data ?? []) as AutomationLog[] }
 }
 
+async function handleAddAutomationStep(userId: string, target: string, message: string) {
+  const a = await findAutomation(userId, target)
+  if (!a) return null
+  const stepTypeMatch = message.match(/(?:step|type)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)
+  const stepType = stepTypeMatch?.[1]?.trim() ?? null
+  if (!stepType) return null
+  const resolvedType = STEP_LABELS[stepType.toLowerCase()] ?? stepType.toLowerCase()
+  const configMatch = message.match(/(?:config|with|text|message)\s+[""](.+?)[""]/i)
+  const configText = configMatch?.[1] ?? null
+  const stepConfig: Record<string, unknown> = {}
+  if (resolvedType === 'send_message') stepConfig.text = configText ?? 'Hello!'
+  else if (resolvedType === 'add_tag') stepConfig.tag_id = configText ?? ''
+  else if (resolvedType === 'wait') stepConfig.amount = 1; stepConfig.unit = 'hour'
+  const { data: steps } = await db()
+    .from('automation_steps').select('position').eq('automation_id', a.id).order('position', { ascending: false }).limit(1)
+  const nextPos = ((steps?.[0] as { position: number } | undefined)?.position ?? 0) + 1
+  const { data: step } = await db()
+    .from('automation_steps').insert({ automation_id: a.id, step_type: resolvedType, step_config: stepConfig, position: nextPos }).select().single()
+  return { automation: a, step }
+}
+
+async function handleRemoveAutomationStep(userId: string, target: string, message: string) {
+  const a = await findAutomation(userId, target)
+  if (!a) return null
+  const posMatch = message.match(/(?:step|position|#)\s*(\d+)/i) ?? message.match(/\b(\d+)\b/)
+  const pos = posMatch ? parseInt(posMatch[1], 10) : null
+  if (!pos) return null
+  const { data: steps } = await db()
+    .from('automation_steps').select('id, position').eq('automation_id', a.id).order('position')
+  const stepList = (steps ?? []) as { id: string; position: number }[]
+  if (pos < 1 || pos > stepList.length) return { automation: a, removed: false }
+  await db().from('automation_steps').delete().eq('id', stepList[pos - 1].id)
+  return { automation: a, removed: true }
+}
+
 // ── Contacts ──
 
 async function handleListContacts(userId: string) {
@@ -542,10 +606,22 @@ async function handleGetContact(userId: string, target: string) {
   return findContact(userId, target)
 }
 
-async function handleCreateContact(userId: string, message: string) {
+async function handleCreateContact(userId: string, message: string, targetName?: string) {
   const quoted = extractQuoted(message)
-  const name = quoted[0] ?? null
-  const phoneMatch = message.match(/(?:phone|number|tel)[:\s]*\+?(\d[\d\s-]{6,})\d/i)
+  const name = quoted[0]
+    ?? targetName
+    ?? (() => {
+      const m1 = message.match(/(?:with\s+name\s+|name\s+is\s+|name\s+|named\s+|called\s+)(\w+(?:\s+\w+)*?)(?=\s+(?:and|his|her|their|with|phone|email|company|number)|\s*(?:$|is))/i)
+      if (m1) return m1[1].trim()
+      const mColon = message.match(/name\s*:\s*(\w+(?:\s+\w+)*?)(?=\s+(?:phone|email|company|number)|\s*$)/i)
+      if (mColon) return mColon[1].trim()
+      const m2 = message.match(/(?:contact\s+)(?:a\s+|new\s+)?(\w+)(?=\s+(?:with|phone|email|company|number)|\s*$)/i)
+      if (m2 && !/^(?:with|phone|email|company|number|called|named|name|a|new)$/i.test(m2[1])) return m2[1].trim()
+      return null
+    })()
+  const phoneMatch = message.match(/(?:phone|number|tel)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
+    ?? message.match(/(?:phone|number|tel)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
+    ?? message.match(/\b(\d{10,15})\b/)
   const emailMatch = message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)
   const companyMatch = message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)
   const phone = phoneMatch ? phoneMatch[1].replace(/[\s-]/g, '') : null
@@ -564,7 +640,9 @@ async function handleUpdateContact(userId: string, target: string, message: stri
   const emailMatch = message.match(/(?:email)[:\s]*[""]?([\w@.-]+)[""]?/i)
   const companyMatch = message.match(/(?:company)[:\s]*[""]?([\w\s]+)[""]?/i)
   const nameMatch = message.match(/(?:name|rename)[:\s]*[""]?(.+?)[""]?$/i)
-  const phoneMatch = message.match(/(?:phone|number)[:\s]*\+?(\d[\d\s-]{6,})\d/i)
+  const phoneMatch = message.match(/(?:phone|number)[:\s]*\+?(\d[\d\s-]{5,}\d)/i)
+    ?? message.match(/(?:phone|number)\s+is\s*\+?(\d[\d\s-]{5,}\d)/i)
+    ?? message.match(/\b(\d{10,15})\b/)
   if (emailMatch) update.email = emailMatch[1]
   if (companyMatch) update.company = companyMatch[1].trim()
   if (nameMatch && !message.toLowerCase().includes('update contact')) update.name = nameMatch[1].trim()
@@ -658,12 +736,16 @@ async function handleReopenConversation(userId: string, target: string) {
   return { ...conv, status: 'open' } as Conversation
 }
 
-async function handleAssignConversation(userId: string, target: string, message: string) {
+async function handleAssignConversation(userId: string, target: string, agentName: string | undefined) {
   const conv = await findConversation(userId, target)
   if (!conv) return null
-  const agentMatch = message.match(/(?:to|agent)\s+[""]?(.+?)[""]?$/i)
-  // Simplified: just log it; real assignment would need profile lookup
-  return { conversation: conv, assigned_to: agentMatch?.[1] ?? 'requested' }
+  const agent = agentName ?? null
+  if (!agent) return { conversation: conv, assigned: false, reason: 'No agent specified' }
+  const { data: profiles } = await db()
+    .from('profiles').select('id').ilike('full_name', `%${agent}%`).limit(1)
+  const agentId = (profiles?.[0] as { id: string } | undefined)?.id ?? null
+  await db().from('conversations').update({ assigned_agent_id: agentId, updated_at: new Date().toISOString() }).eq('id', conv.id)
+  return { conversation: { ...conv, assigned_agent_id: agentId } as Conversation, assigned: true }
 }
 
 // ── Broadcasts ──
@@ -686,12 +768,65 @@ async function handleCreateBroadcast(userId: string, message: string) {
   return { broadcast: data as Broadcast | null, reason: null }
 }
 
+async function handleSendBroadcast(userId: string, target: string) {
+  const { data: broadcasts } = await db()
+    .from('broadcasts').select('*').eq('user_id', userId).ilike('name', `%${target}%`).maybeSingle()
+  if (!broadcasts) return null
+  await db().from('broadcasts').update({ status: 'sending' }).eq('id', (broadcasts as Broadcast).id)
+  return { ...broadcasts, status: 'sending' } as Broadcast
+}
+
+async function handleDeleteBroadcast(userId: string, target: string) {
+  const { data: all } = await db().from('broadcasts').select('*').eq('user_id', userId)
+  const b = ((all ?? []) as Broadcast[]).find((x) => x.name.toLowerCase().includes(target.toLowerCase()))
+  if (!b) return null
+  await db().from('broadcasts').delete().eq('id', b.id)
+  return b
+}
+
 // ── Pipelines & Deals ──
 
 async function handleListPipelines(userId: string) {
   const { data } = await db()
     .from('pipelines').select('*').eq('user_id', userId).order('created_at')
   return (data ?? []) as Pipeline[]
+}
+
+async function handleCreatePipeline(userId: string, message: string) {
+  const quoted = extractQuoted(message)
+  const name = quoted[0] ?? message.match(/(?:pipeline|called|named)\s+[""]?(.+?)[""]?(?:\s+with|\s*$)/i)?.[1]?.trim() ?? null
+  if (!name) return null
+  const stagesMatch = message.match(/(?:stages?|steps?)\s*:\s*[""]?(.+?)[""]?(?:\s+with|\s*$)/i)
+  const defaultStages = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Closed']
+  const stageNames = stagesMatch ? stagesMatch[1].split(',').map((s) => s.trim()).filter(Boolean) : defaultStages
+  const { data: pipeline } = await db()
+    .from('pipelines').insert({ user_id: userId, name }).select().single()
+  if (pipeline) {
+    const stages = stageNames.map((s, i) => ({ pipeline_id: pipeline.id, name: s, position: i, color: '#3b82f6' }))
+    await db().from('pipeline_stages').insert(stages)
+  }
+  return { pipeline, stages: stageNames } as { pipeline: Pipeline; stages: string[] } | null
+}
+
+async function handleDeletePipeline(userId: string, target: string) {
+  const p = await findPipeline(userId, target)
+  if (!p) return null
+  await db().from('pipelines').delete().eq('id', p.id)
+  return p
+}
+
+async function handleAddPipelineStage(userId: string, target: string, message: string) {
+  const p = await findPipeline(userId, target)
+  if (!p) return null
+  const quoted = extractQuoted(message)
+  const stageName = quoted[0] ?? message.match(/(?:stage|step)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim() ?? null
+  if (!stageName) return { pipeline: p, added: false }
+  const { data: stages } = await db()
+    .from('pipeline_stages').select('position').eq('pipeline_id', p.id).order('position', { ascending: false }).limit(1)
+  const nextPos = ((stages?.[0] as { position: number } | undefined)?.position ?? -1) + 1
+  const { data: stage } = await db()
+    .from('pipeline_stages').insert({ pipeline_id: p.id, name: stageName, position: nextPos, color: '#3b82f6' }).select().single()
+  return { pipeline: p, stage }
 }
 
 async function handleListDeals(userId: string) {
@@ -748,14 +883,43 @@ async function handleListTags(userId: string) {
   return (data ?? []) as Tag[]
 }
 
-async function handleCreateTag(userId: string, message: string) {
+async function handleCreateTag(userId: string, message: string, targetName?: string) {
   const quoted = extractQuoted(message)
-  const name = quoted[0] ?? null
+  const name = quoted[0]
+    ?? targetName
+    ?? message.match(/(?:called\s+|named\s+|tag\s+)(\w+(?:\s+\w+)*?)(?:\s+with|\s*$)/i)?.[1]?.trim()
+    ?? null
   if (!name) return null
   const colorMatch = message.match(/(?:color)[:\s]*#?([\w]{3,8})/i)
   const { data } = await db()
     .from('tags').insert({ user_id: userId, name, color: colorMatch ? `#${colorMatch[1]}` : '#6366f1' }).select().single()
   return data as Tag | null
+}
+
+async function handleDeleteTag(userId: string, target: string) {
+  const tag = await findTag(userId, target)
+  if (!tag) return null
+  await db().from('tags').delete().eq('id', tag.id)
+  return tag
+}
+
+async function handleAddContactNote(userId: string, target: string, message: string) {
+  const contact = await findContact(userId, target)
+  if (!contact) return null
+  const quoted = extractQuoted(message)
+  const noteText = quoted[0] ?? message.match(/(?:note|notes?)\s+[""]?(.+?)[""]?$/i)?.[1]?.trim() ?? null
+  if (!noteText) return null
+  const { data } = await db()
+    .from('contact_notes').insert({ contact_id: contact.id, user_id: userId, note_text: noteText }).select().single()
+  return { contact: contact as Contact, note: data }
+}
+
+async function handleListContactNotes(userId: string, target: string) {
+  const contact = await findContact(userId, target)
+  if (!contact) return null
+  const { data } = await db()
+    .from('contact_notes').select('*').eq('contact_id', contact.id).order('created_at', { ascending: false }).limit(20)
+  return { contact: contact as Contact, notes: data ?? [] }
 }
 
 // ── Templates ──
@@ -794,7 +958,8 @@ export async function POST(request: Request) {
   if (!body?.message) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
 
   const message = String(body.message).trim()
-  const { parsed, replyOverride } = await resolveIntent(message)
+  const history: AiMessage[] = body.history ?? []
+  const { parsed, replyOverride } = await resolveIntent(message, history)
   let { intent, target, params } = parsed
 
   try {
@@ -940,6 +1105,28 @@ export async function POST(request: Request) {
         })
       }
 
+      case 'add_automation_step': {
+        if (!target) return NextResponse.json({ reply: 'Which automation to add a step to? Try "add a step to automation \\"Name\\"."' })
+        const result = await handleAddAutomationStep(user.id, target, message)
+        if (!result) return NextResponse.json({ reply: `Automation "${target}" not found.` })
+        return NextResponse.json({
+          reply: `Added step to **${(result as any).automation.name}**. Say "show automation ${(result as any).automation.name}" to see it.`,
+          action: { type: 'updated', status: 'success' as const },
+        })
+      }
+
+      case 'remove_automation_step': {
+        if (!target) return NextResponse.json({ reply: 'Which automation to remove a step from?' })
+        const result = await handleRemoveAutomationStep(user.id, target, message)
+        if (!result) return NextResponse.json({ reply: `Automation "${target}" not found.` })
+        const removed = (result as any).removed
+        if (!removed) return NextResponse.json({ reply: 'Could not remove step. Check the step number is valid.' })
+        return NextResponse.json({
+          reply: `Removed step from **${(result as any).automation.name}**.`,
+          action: { type: 'updated', status: 'success' as const },
+        })
+      }
+
       // ── Contacts ──
       case 'list_contacts': {
         const contacts = await handleListContacts(user.id)
@@ -965,7 +1152,7 @@ export async function POST(request: Request) {
       }
 
       case 'create_contact': {
-        const c = await handleCreateContact(user.id, message)
+        const c = await handleCreateContact(user.id, message, target)
         if (!c) return NextResponse.json({ reply: 'Usage: "create contact \\"Name\\" with phone 1234567890" (name and phone required).' })
         return NextResponse.json({
           reply: `Created contact **${c.name}** (${c.phone}).`,
@@ -1010,6 +1197,31 @@ export async function POST(request: Request) {
         return NextResponse.json({
           reply: `Removed **${result.tag?.name ?? 'tag'}** from **${result.contact.name}**.`,
           action: { type: 'untagged', status: 'success' as const },
+        })
+      }
+
+      case 'add_contact_note': {
+        if (!target) return NextResponse.json({ reply: 'Usage: "add a note to contact [name] saying \\"the note\\"."' })
+        const result = await handleAddContactNote(user.id, target, message)
+        if (!result) return NextResponse.json({ reply: 'Contact not found or note text missing.' })
+        return NextResponse.json({
+          reply: `Added note to **${(result.contact as any).name ?? target}**.`,
+          action: { type: 'created', status: 'success' as const },
+        })
+      }
+
+      case 'list_contact_notes': {
+        if (!target) return NextResponse.json({ reply: 'Which contact\'s notes? Try "show notes for contact [name]".' })
+        const result = await handleListContactNotes(user.id, target)
+        if (!result) return NextResponse.json({ reply: 'Contact not found.' })
+        const { notes } = result as { notes: { note_text: string; created_at: string }[] }
+        if (notes.length === 0) return NextResponse.json({
+          reply: `No notes for **${(result.contact as any).name ?? target}**.`,
+          action: { type: 'list', status: 'success' as const },
+        })
+        return NextResponse.json({
+          reply: `**${notes.length}** note(s) for **${(result.contact as any).name ?? target}**:\n${notes.map((n: any, i: number) => `  ${i + 1}. [${new Date(n.created_at).toLocaleDateString()}] ${n.note_text}`).join('\n')}`,
+          action: { type: 'list', status: 'success' as const },
         })
       }
 
@@ -1072,11 +1284,14 @@ export async function POST(request: Request) {
 
       case 'assign_conversation': {
         if (!target) return NextResponse.json({ reply: 'Usage: "assign conversation [name] to [agent]".' })
-        const result = await handleAssignConversation(user.id, target, message)
+        const agentMatch = message.match(/(?:to|agent)\s+[""]?(.+?)[""]?$/i)
+        const agentName = agentMatch?.[1]?.trim()
+        const result = await handleAssignConversation(user.id, target, agentName)
         if (!result) return NextResponse.json({ reply: 'Conversation not found.' })
+        const assigned = (result as any).assigned
         return NextResponse.json({
-          reply: `Assignment noted for conversation with **${target}**.`,
-          action: { type: 'assigned', status: 'success' as const },
+          reply: assigned ? `Assigned conversation with **${target}** to agent.` : `Could not assign conversation with **${target}**. ${(result as any).reason ?? ''}`,
+          action: { type: 'assigned', status: assigned ? ('success' as const) : ('error' as const) },
         })
       }
 
@@ -1105,6 +1320,26 @@ export async function POST(request: Request) {
         })
       }
 
+      case 'send_broadcast': {
+        if (!target) return NextResponse.json({ reply: 'Which broadcast to send? Try "send broadcast \\"Name\\"."' })
+        const b = await handleSendBroadcast(user.id, target)
+        if (!b) return NextResponse.json({ reply: `Broadcast "${target}" not found.` })
+        return NextResponse.json({
+          reply: `Broadcast **${b.name}** is now sending. Track its progress in the Broadcasts section.`,
+          action: { type: 'sent', status: 'success' as const, detail: b.name },
+        })
+      }
+
+      case 'delete_broadcast': {
+        if (!target) return NextResponse.json({ reply: 'Which broadcast to delete?' })
+        const b = await handleDeleteBroadcast(user.id, target)
+        if (!b) return NextResponse.json({ reply: `Broadcast "${target}" not found.` })
+        return NextResponse.json({
+          reply: `Deleted broadcast **${b.name}**.`,
+          action: { type: 'deleted', status: 'success' as const },
+        })
+      }
+
       // ── Pipelines & Deals ──
       case 'list_pipelines': {
         const pips = await handleListPipelines(user.id)
@@ -1115,6 +1350,37 @@ export async function POST(request: Request) {
         return NextResponse.json({
           reply: `**${pips.length}** pipeline(s):\n${pips.map((p, i) => `  ${i + 1}. **${p.name}**`).join('\n')}`,
           action: { type: 'list', status: 'success' as const },
+        })
+      }
+
+      case 'create_pipeline': {
+        const result = await handleCreatePipeline(user.id, message)
+        if (!result) return NextResponse.json({ reply: 'Usage: "create a pipeline called \\"Sales\\" with stages Lead,Qualified,Closed".' })
+        const { pipeline, stages } = result
+        return NextResponse.json({
+          reply: `Created pipeline **${pipeline.name}** with stages: ${stages.join(' → ')}.`,
+          action: { type: 'created', status: 'success' as const, detail: pipeline.name },
+        })
+      }
+
+      case 'delete_pipeline': {
+        if (!target) return NextResponse.json({ reply: 'Which pipeline to delete?' })
+        const p = await handleDeletePipeline(user.id, target)
+        if (!p) return NextResponse.json({ reply: `Pipeline "${target}" not found.` })
+        return NextResponse.json({
+          reply: `Deleted pipeline **${p.name}** and all its stages.`,
+          action: { type: 'deleted', status: 'success' as const },
+        })
+      }
+
+      case 'add_pipeline_stage': {
+        if (!target) return NextResponse.json({ reply: 'Which pipeline to add a stage to?' })
+        const result = await handleAddPipelineStage(user.id, target, message)
+        if (!result) return NextResponse.json({ reply: `Pipeline "${target}" not found.` })
+        const s = result.stage as { name: string } | null
+        return NextResponse.json({
+          reply: `Added stage **${s?.name ?? 'New Stage'}** to **${result.pipeline.name}**.`,
+          action: { type: 'updated', status: 'success' as const },
         })
       }
 
@@ -1177,11 +1443,21 @@ export async function POST(request: Request) {
       }
 
       case 'create_tag': {
-        const t = await handleCreateTag(user.id, message)
+        const t = await handleCreateTag(user.id, message, target)
         if (!t) return NextResponse.json({ reply: 'Usage: "create a tag \\"Name\\"".' })
         return NextResponse.json({
           reply: `Created tag **${t.name}**.`,
           action: { type: 'created', status: 'success' as const, detail: t.name },
+        })
+      }
+
+      case 'delete_tag': {
+        if (!target) return NextResponse.json({ reply: 'Which tag to delete?' })
+        const t = await handleDeleteTag(user.id, target)
+        if (!t) return NextResponse.json({ reply: `Tag "${target}" not found.` })
+        return NextResponse.json({
+          reply: `Deleted tag **${t.name}**.`,
+          action: { type: 'deleted', status: 'success' as const },
         })
       }
 
