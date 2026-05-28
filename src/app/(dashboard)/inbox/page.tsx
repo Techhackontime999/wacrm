@@ -488,14 +488,14 @@ export default function InboxPage() {
     [activeConversation]
   );
 
-  // On mobile (<lg) we show a SINGLE pane — either the list or the
+  // On mobile (<md) we show a SINGLE pane — either the list or the
   // thread — rather than cramming both side-by-side. Selecting a
   // conversation slides the thread in; the thread's back button pops
-  // it back to the list. On lg+ both panes render side-by-side as
+  // it back to the list. On md+ both panes render side-by-side as
   // before, unchanged.
   const hasActiveConv = !!activeConversation;
-  // Contact sidebar toggle for screens below xl (1280px). On xl+ the
-  // sidebar sits permanently next to the thread. Below xl the sidebar
+  // Contact sidebar toggle for screens below lg (1024px). On lg+ the
+  // sidebar sits permanently next to the thread. Below lg the sidebar
   // replaces the thread when the user taps the name/avatar in the
   // header — same single-pane pattern as the conv-list / thread swap.
   const [showContactSidebar, setShowContactSidebar] = useState(false);
@@ -507,26 +507,27 @@ export default function InboxPage() {
   }, []);
 
   return (
-    <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden sm:-m-6">
-      {/* WhatsApp connection banner — in the flex column, not absolute,
-          so it pushes the panels down instead of overlapping them. */}
+    <div className="-m-4 flex min-h-dvh flex-col overflow-hidden sm:-m-6">
+      {/* WhatsApp connection banner */}
       {whatsappConnected === false && (
         <div className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2">
-          <WifiOff className="h-4 w-4 text-amber-400" />
-          <p className="text-xs text-amber-400">
-            WhatsApp® is not connected. Go to Settings to connect your account.
+          <WifiOff className="h-4 w-4 text-amber-400 sm:h-[1.125rem] sm:w-[1.125rem]" />
+          <p className="text-xs text-amber-400 sm:text-[clamp(0.75rem,1.5vw,0.875rem)]">
+            WhatsApp is not connected. Go to Settings to connect your account.
           </p>
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left panel: Conversation list.
-            Hidden on mobile when a conversation is selected so the
-            thread can occupy the full width. Always visible on lg+. */}
+      {/* CSS Grid layout with viewport-relative column widths.
+          Mobile: single column, one panel visible at a time.
+          md+: two columns (list + thread).
+          lg+: three columns (list + thread + sidebar). */}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(14rem,22vw)_1fr] lg:grid-cols-[minmax(16rem,20vw)_1fr_minmax(14rem,16vw)] flex-1 overflow-hidden">
+        {/* List panel */}
         <div
           className={cn(
-            "flex h-full flex-1 lg:flex-none",
-            hasActiveConv ? "hidden lg:flex" : "flex",
+            "min-w-0",
+            hasActiveConv ? "hidden md:block" : "block",
           )}
         >
           <ConversationList
@@ -538,14 +539,11 @@ export default function InboxPage() {
           />
         </div>
 
-        {/* Center panel: Message thread.
-            Hidden on mobile when no conversation is selected so the
-            list can occupy the full width. Always visible on lg+
-            (shows its own empty-state if no thread is picked yet). */}
+        {/* Thread panel */}
         <div
           className={cn(
-            "flex h-full min-w-0 flex-1 xl:flex",
-            hasActiveConv && !showContactSidebar ? "flex" : "hidden xl:flex",
+            "min-w-0",
+            hasActiveConv && !showContactSidebar ? "block" : "hidden md:block",
           )}
         >
           <MessageThread
@@ -564,13 +562,11 @@ export default function InboxPage() {
           />
         </div>
 
-        {/* Right panel: Contact sidebar.
-            On xl+ (1280px+) it sits permanently next to the thread.
-            Below xl it replaces the thread when toggled via the header button. */}
+        {/* Sidebar panel */}
         <div
           className={cn(
-            "h-full min-w-0",
-            showContactSidebar ? "flex flex-1 xl:flex-none xl:w-70 2xl:w-80" : "hidden xl:block xl:w-70 2xl:w-80",
+            "min-w-0",
+            showContactSidebar ? "block lg:block" : "hidden lg:block",
           )}
         >
           <ContactSidebar contact={activeContact} onClose={handleCloseContactSidebar} />

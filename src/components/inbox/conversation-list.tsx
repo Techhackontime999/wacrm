@@ -144,26 +144,24 @@ export function ConversationList({
   const activeFilter = FILTER_OPTIONS.find((o) => o.value === filter);
 
   return (
-    // w-full on mobile so the list occupies the whole viewport when it's
-    // the single pane showing; fixed 320px on desktop where it shares the
-    // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900 lg:w-80 xl:w-96">
+    // Full width on mobile (grid controls the column size on md+).
+    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900">
       {/* Search + Filter */}
-      <div className="space-y-2 border-b border-slate-800 p-3 max-sm:p-2">
+      <div className="space-y-2 border-b border-slate-800 p-[clamp(0.5rem,1.5vw,0.75rem)]">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 h-[clamp(0.875rem,1.25vw,1.125rem)] w-[clamp(0.875rem,1.25vw,1.125rem)] -translate-y-1/2 text-slate-500" />
           <Input
             value={search}
             onChange={handleSearchChange}
             placeholder="Search conversations..."
-            className="border-slate-700 bg-slate-800 pl-9 text-sm text-white placeholder-slate-500 focus:border-primary/50"
+            className="border-slate-700 bg-slate-800 pl-[clamp(2rem,3vw,2.5rem)] text-[clamp(0.8125rem,1.1vw,0.875rem)] text-white placeholder-slate-500 transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:border-primary/50 h-[clamp(2rem,3vw,2.5rem)]"
           />
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-slate-400 hover:text-white rounded-md hover:bg-slate-800">
+          <DropdownMenuTrigger className="inline-flex items-center justify-center h-[clamp(1.5rem,2.25vw,2rem)] gap-1 px-[clamp(0.375rem,0.6vw,0.5rem)] text-[clamp(0.6875rem,0.9vw,0.75rem)] text-slate-400 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-white rounded-md hover:bg-slate-800 active:scale-[0.96]">
               {activeFilter?.label ?? "All"}
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(0.625rem,0.9vw,0.75rem)]" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
@@ -190,8 +188,25 @@ export function ConversationList({
       {/* Conversation Items */}
       <ScrollArea className="flex-1">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="flex flex-col gap-px">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-[clamp(0.5rem,1.5vw,0.75rem)] px-[clamp(0.5rem,1.5vw,0.75rem)] py-[clamp(0.625rem,1.25vw,0.875rem)]">
+                <div className="h-[clamp(2.25rem,4.5vw,3rem)] w-[clamp(2.25rem,4.5vw,3rem)] shrink-0 animate-pulse rounded-full bg-slate-800" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-[clamp(0.75rem,1vw,0.875rem)] w-[clamp(5rem,12vw,7rem)] animate-pulse rounded bg-slate-800" />
+                    <div className="h-[clamp(0.625rem,0.8vw,0.75rem)] w-[clamp(2rem,5vw,2.5rem)] animate-pulse rounded bg-slate-800" />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(6rem,18vw,10rem)] animate-pulse rounded bg-slate-800" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-[clamp(0.75rem,1vw,0.875rem)] w-[clamp(1rem,2.5vw,1.25rem)] animate-pulse rounded-full bg-slate-800" />
+                      <div className="h-[clamp(0.375rem,0.6vw,0.5rem)] w-[clamp(0.375rem,0.6vw,0.5rem)] animate-pulse rounded-full bg-slate-800" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-12 text-center">
@@ -243,17 +258,17 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-800/50 max-sm:gap-2 max-sm:px-2",
-        isActive && "border-l-2 border-primary bg-slate-800/70"
+        "flex w-full items-start gap-[clamp(0.5rem,1.5vw,0.75rem)] px-[clamp(0.5rem,1.5vw,0.75rem)] py-[clamp(0.625rem,1.25vw,0.875rem)] text-left transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-slate-800/50 active:scale-[0.98]",
+        isActive && "border-l-[0.125rem] border-primary bg-slate-800/70"
       )}
     >
       {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
+      <div className="flex h-[clamp(2.25rem,4.5vw,3rem)] w-[clamp(2.25rem,4.5vw,3rem)] shrink-0 items-center justify-center rounded-full bg-slate-700 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-white">
         {contact?.avatar_url ? (
           <img
             src={contact.avatar_url}
             alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
+            className="h-full w-full rounded-full object-cover"
           />
         ) : (
           initials
@@ -263,24 +278,24 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-white">
+          <span className="truncate text-[clamp(0.8125rem,1.25vw,0.9375rem)] font-medium text-white">
             {displayName}
           </span>
-          <span className="shrink-0 text-[10px] text-slate-500">{timeAgo}</span>
+          <span className="shrink-0 text-[clamp(0.625rem,0.9vw,0.75rem)] text-slate-500">{timeAgo}</span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-xs text-slate-400">
+          <p className="truncate text-[clamp(0.6875rem,1vw,0.8125rem)] text-slate-400">
             {conversation.last_message_text || "No messages yet"}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.unread_count > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                {conversation.unread_count}
+              <span className="flex h-[clamp(1rem,1.5vw,1.25rem)] min-w-[clamp(1rem,1.5vw,1.25rem)] items-center justify-center rounded-full bg-primary px-[clamp(0.25rem,0.4vw,0.375rem)] text-[clamp(0.625rem,0.8vw,0.6875rem)] font-bold text-primary-foreground">
+                {conversation.unread_count > 99 ? "99+" : conversation.unread_count}
               </span>
             )}
             <span
               className={cn(
-                "h-2 w-2 rounded-full",
+                "h-[clamp(0.375rem,0.6vw,0.5rem)] w-[clamp(0.375rem,0.6vw,0.5rem)] rounded-full",
                 STATUS_COLORS[conversation.status]
               )}
               title={conversation.status}

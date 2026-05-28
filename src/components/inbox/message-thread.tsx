@@ -686,13 +686,13 @@ export function MessageThread({
   if (!conversation || !contact) {
     return (
       <div className={cn("flex flex-1 flex-col items-center justify-center", DOODLE_BG_CLASSES)}>
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-800">
-          <MessageSquare className="h-8 w-8 text-slate-600" />
+        <div className="flex h-[clamp(3rem,6vw,4rem)] w-[clamp(3rem,6vw,4rem)] items-center justify-center rounded-full bg-slate-800">
+          <MessageSquare className="h-[clamp(1.5rem,3vw,2rem)] w-[clamp(1.5rem,3vw,2rem)] text-slate-600" />
         </div>
-        <h3 className="mt-4 text-sm font-medium text-slate-400">
+        <h3 className="mt-4 text-[clamp(0.8125rem,1.25vw,0.9375rem)] font-medium text-slate-400">
           Select a conversation
         </h3>
-        <p className="mt-1 text-xs text-slate-600">
+        <p className="mt-1 text-[clamp(0.6875rem,0.9vw,0.75rem)] text-slate-600">
           Choose a conversation from the left to start messaging
         </p>
       </div>
@@ -714,18 +714,18 @@ export function MessageThread({
     <div className={cn("flex flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid bg-slate-900 sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
-      <div className="flex items-center justify-between gap-1 border-b border-slate-800 bg-slate-900 px-2 py-3 sm:gap-2 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          {/* Back-to-list button — mobile only. Hidden on lg+ where the
+      <div className="flex items-center justify-between gap-[clamp(0.25rem,0.6vw,0.5rem)] border-b border-slate-800 bg-slate-900 px-[clamp(0.5rem,1.5vw,1rem)] py-[clamp(0.625rem,1.25vw,0.875rem)]">
+        <div className="flex min-w-0 items-center gap-[clamp(0.375rem,0.9vw,0.75rem)]">
+          {/* Back-to-list button — mobile only. Hidden on md+ where the
               conversation list is always visible next to the thread. */}
           {onBack && (
             <button
               type="button"
               onClick={onBack}
               aria-label="Back to conversations"
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white lg:hidden"
+              className="flex h-[clamp(2rem,3.5vw,2.5rem)] w-[clamp(2rem,3.5vw,2.5rem)] flex-shrink-0 items-center justify-center rounded-md text-slate-300 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-slate-800 hover:text-white active:scale-[0.92] md:hidden"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-[clamp(1rem,2vw,1.25rem)] w-[clamp(1rem,2vw,1.25rem)]" />
             </button>
           )}
           {onContactInfoClick ? (
@@ -733,48 +733,43 @@ export function MessageThread({
               type="button"
               onClick={onContactInfoClick}
               aria-label="Open contact info"
-              className="flex items-center gap-2 sm:gap-3 xl:cursor-default"
+              className="flex items-center gap-[clamp(0.375rem,0.9vw,0.75rem)] lg:cursor-default"
             >
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
+              <div className="flex h-[clamp(2rem,3.5vw,2.5rem)] w-[clamp(2rem,3.5vw,2.5rem)] flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-white">
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 text-left">
-                <h2 className="truncate text-sm font-semibold text-white">{displayName}</h2>
-                <p className="truncate text-xs text-slate-400">{contact.phone}</p>
+                <h2 className="truncate text-[clamp(0.8125rem,1.25vw,0.9375rem)] font-semibold text-white">{displayName}</h2>
+                <p className="truncate text-[clamp(0.6875rem,0.9vw,0.75rem)] text-slate-400">{contact.phone}</p>
               </div>
             </button>
           ) : (
             <>
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-white">
+              <div className="flex h-[clamp(2rem,3.5vw,2.5rem)] w-[clamp(2rem,3.5vw,2.5rem)] flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-white">
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold text-white">{displayName}</h2>
-                <p className="truncate text-xs text-slate-400">{contact.phone}</p>
+                <h2 className="truncate text-[clamp(0.8125rem,1.25vw,0.9375rem)] font-semibold text-white">{displayName}</h2>
+                <p className="truncate text-[clamp(0.6875rem,0.9vw,0.75rem)] text-slate-400">{contact.phone}</p>
               </div>
             </>
           )}
-          {/* Session timer badge — hidden on the narrowest phones so
-              the name + back arrow keep their room. */}
+          {/* Session timer badge */}
           <Badge
             variant="outline"
             className={cn(
-              "ml-1 hidden gap-1 border-slate-700 text-[10px] sm:inline-flex sm:ml-2",
+              "ml-1 hidden gap-1 border-slate-700 text-[clamp(0.5625rem,0.8vw,0.6875rem)] sm:inline-flex sm:ml-2",
               sessionInfo.expired ? "text-red-400" : "text-primary"
             )}
           >
-            <Clock className="h-3 w-3" />
+            <Clock className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(0.625rem,0.9vw,0.75rem)]" />
             {sessionInfo.remaining}
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-[clamp(0.25rem,0.5vw,0.5rem)]">
 
-          {/* Manual refresh — forces a refetch of the messages + the
-              conversation list (the parent bumps its resyncToken). Useful
-              when realtime missed an event or the agent just wants to be
-              sure nothing's stale. Only rendered when the parent wires
-              up `onRefresh`. */}
+          {/* Manual refresh */}
           {onRefresh && (
             <button
               type="button"
@@ -783,11 +778,11 @@ export function MessageThread({
               aria-label="Refresh conversation"
               title="Refresh"
               className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white disabled:opacity-60",
+                "inline-flex h-[clamp(1.5rem,2.5vw,2rem)] w-[clamp(1.5rem,2.5vw,2rem)] items-center justify-center rounded-md text-slate-400 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-slate-800 hover:text-white active:scale-[0.92] disabled:opacity-60",
               )}
             >
               <RefreshCw
-                className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
+                className={cn("h-[clamp(0.75rem,1.25vw,0.875rem)] w-[clamp(0.75rem,1.25vw,0.875rem)]", isRefreshing && "animate-spin")}
               />
             </button>
           )}
@@ -795,11 +790,11 @@ export function MessageThread({
           {/* Status dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-slate-800",
+                  "inline-flex items-center justify-center h-[clamp(1.5rem,2.5vw,2rem)] gap-1 px-[clamp(0.25rem,0.5vw,0.5rem)] text-[clamp(0.6875rem,0.9vw,0.75rem)] rounded-md transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-slate-800 active:scale-[0.96]",
                   currentStatus?.color ?? "text-slate-400"
                 )}>
                 {currentStatus?.label ?? "Status"}
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(0.625rem,0.9vw,0.75rem)]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -821,13 +816,13 @@ export function MessageThread({
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-slate-800",
+                "inline-flex items-center justify-center h-[clamp(1.5rem,2.5vw,2rem)] gap-1 px-[clamp(0.25rem,0.5vw,0.5rem)] text-[clamp(0.6875rem,0.9vw,0.75rem)] rounded-md transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-slate-800 active:scale-[0.96]",
                 assignedAgentId ? "text-primary" : "text-slate-400"
               )}
             >
-              <UserPlus className="h-3 w-3" />
+              <UserPlus className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(0.625rem,0.9vw,0.75rem)]" />
               <span className="hidden md:inline">{assignLabel}</span>
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-[clamp(0.625rem,0.9vw,0.75rem)] w-[clamp(0.625rem,0.9vw,0.75rem)]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -875,7 +870,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-[clamp(0.625rem,1.5vw,1rem)] py-[clamp(0.625rem,1.5vw,1rem)]">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />

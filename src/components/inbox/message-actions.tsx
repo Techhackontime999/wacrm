@@ -85,7 +85,7 @@ export function MessageActions({
       onContextMenu={handleContextMenu}
       onBlur={() => setTouchOpen(false)}
     >
-      <div className="group/actions relative max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] xl:max-w-[55%]">
+      <div className="group/actions relative max-w-[clamp(60%,75vw,95%)] sm:max-w-[clamp(50%,65vw,85%)] lg:max-w-[clamp(45%,55vw,75%)]">
         {children}
       <div
         data-touch-open={touchOpen || pickerOpen ? "true" : undefined}
