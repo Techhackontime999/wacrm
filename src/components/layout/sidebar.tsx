@@ -14,6 +14,7 @@ import {
   Radio,
   Zap,
   Workflow,
+  Bot,
   Settings,
   LogOut,
   User,
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { href: "/pipelines", label: "Pipelines", icon: GitBranch },
   { href: "/broadcasts", label: "Broadcasts", icon: Radio },
   { href: "/automations", label: "Automations", icon: Zap },
+  { href: "/ai-automation", label: "AI Automation", icon: Bot, beta: true },
   { href: "/flows", label: "Flows", icon: Workflow, beta: true },
 ];
 
