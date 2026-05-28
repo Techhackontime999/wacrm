@@ -1203,7 +1203,7 @@ export async function POST(request: Request) {
         try {
           const m = await handleDashboard(user.id)
           return NextResponse.json({
-            reply: `**Dashboard Snapshot**\n- Active conversations: ${m?.activeConversations ?? '?'}\n- New contacts today: ${m?.newContactsToday ?? '?'}\n- Messages sent today: ${m?.messagesSentToday ?? '?'}\n- Open deals: ${m?.openDealsCount ?? '?'} ($${m?.openDealsValue ?? '?'})`,
+            reply: `**Dashboard Snapshot**\n- Active conversations: ${m?.activeConversations?.current ?? '?'}\n- New contacts today: ${m?.newContactsToday?.current ?? '?'}\n- Messages sent today: ${m?.messagesSentToday?.current ?? '?'}\n- Open deals: ${m?.openDealsCount ?? '?'} ($${m?.openDealsValue ?? '?'})`,
             action: { type: 'dashboard', status: 'success' as const },
           })
         } catch {

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import {
   Send, Bot, User, Terminal, Trash2, Loader2,
-  Zap, List, Plus, Activity, HelpCircle,
+  Zap, Plus, Activity, HelpCircle,
   Users, MessageSquare, LayoutDashboard, Radio,
   GitBranch, Tags, FileText,
 } from "lucide-react"
@@ -38,17 +38,35 @@ interface QuickAction {
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
+  { label: "Dashboard", icon: LayoutDashboard, prompt: "Show me the dashboard", category: "Overview" },
+  { label: "Help", icon: HelpCircle, prompt: "Help", category: "Overview" },
+
   { label: "Show automations", icon: Zap, prompt: "Show my automations", category: "Automations" },
   { label: "Create welcome", icon: Plus, prompt: "Create a welcome automation", category: "Automations" },
+  { label: "Create follow-up", icon: Plus, prompt: "Create a follow-up automation", category: "Automations" },
+  { label: "Create OOO", icon: Plus, prompt: "Create an out-of-office automation", category: "Automations" },
+  { label: "Activate all", icon: Activity, prompt: "Activate all automations", category: "Automations" },
   { label: "Pause all", icon: Activity, prompt: "Pause all automations", category: "Automations" },
+  { label: "Automation logs", icon: FileText, prompt: "Show automation logs", category: "Automations" },
 
   { label: "List contacts", icon: Users, prompt: "Show my contacts", category: "Contacts" },
-  { label: "Dashboard", icon: LayoutDashboard, prompt: "Show me the dashboard", category: "CRM" },
-  { label: "Show deals", icon: GitBranch, prompt: "Show my deals", category: "CRM" },
-  { label: "Conversations", icon: MessageSquare, prompt: "Show my conversations", category: "CRM" },
-  { label: "Broadcasts", icon: Radio, prompt: "Show my broadcasts", category: "CRM" },
-  { label: "WhatsApp status", icon: MessageSquare, prompt: "WhatsApp status", category: "CRM" },
-  { label: "Help", icon: HelpCircle, prompt: "Help", category: "General" },
+  { label: "Create contact", icon: Plus, prompt: "Create a contact named John with phone 1234567890", category: "Contacts" },
+  { label: "Tags", icon: Tags, prompt: "Show my tags", category: "Contacts" },
+  { label: "Create tag", icon: Plus, prompt: "Create a tag VIP", category: "Contacts" },
+
+  { label: "Conversations", icon: MessageSquare, prompt: "Show my conversations", category: "Inbox" },
+  { label: "Send message", icon: MessageSquare, prompt: "Send message to John saying Hello", category: "Inbox" },
+
+  { label: "Show deals", icon: GitBranch, prompt: "Show my deals", category: "Deals" },
+  { label: "Create deal", icon: Plus, prompt: "Create a deal Big Deal worth 10000 in Sales pipeline", category: "Deals" },
+  { label: "Pipelines", icon: GitBranch, prompt: "Show my pipelines", category: "Deals" },
+
+  { label: "Broadcasts", icon: Radio, prompt: "Show my broadcasts", category: "Broadcasts" },
+  { label: "Create broadcast", icon: Plus, prompt: "Create a broadcast Promo with template hello_world", category: "Broadcasts" },
+
+  { label: "Templates", icon: FileText, prompt: "Show my message templates", category: "Templates" },
+
+  { label: "WhatsApp status", icon: MessageSquare, prompt: "WhatsApp status", category: "Settings" },
 ]
 
 export function AiChatbox() {
@@ -57,7 +75,7 @@ export function AiChatbox() {
       id: "intro",
       role: "assistant",
       content:
-        "I manage your entire CRM through natural language. Automations, contacts, conversations, deals, broadcasts, tags — just ask.\n\nTry a quick action below or type what you need.",
+        "I manage your **entire CRM** through natural language.\n\n**What I can do:**\n• Automations — create, activate, pause, view logs\n• Contacts — list, create, tag, search\n• Conversations — view, send messages, close, assign\n• Deals — list, create, move pipeline stages, mark won/lost\n• Broadcasts — list, create campaigns\n• Tags & Templates — list and create\n• Dashboard snapshot & WhatsApp status\n\nTry a quick action below or just type what you need.",
       timestamp: new Date(),
       action: { type: "ready", status: "success" },
     },
@@ -167,7 +185,7 @@ export function AiChatbox() {
 
   const hasSentMessage = messages.length > 1
 
-  const visibleActions = showAllActions ? QUICK_ACTIONS : QUICK_ACTIONS.slice(0, 6)
+  const visibleActions = showAllActions ? QUICK_ACTIONS : QUICK_ACTIONS.slice(0, 8)
 
   return (
     <div className="flex h-full flex-col">
@@ -282,38 +300,45 @@ export function AiChatbox() {
         </div>
       </div>
 
-      {!hasSentMessage && (
-        <div className="border-t border-slate-800/50 px-4 py-3">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-            Quick Actions
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {visibleActions.map((action) => {
-              const Icon = action.icon
-              return (
-                <button
-                  key={action.prompt}
-                  type="button"
-                  onClick={() => handleSend(action.prompt)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-primary/30 hover:bg-slate-800 hover:text-white"
-                >
-                  <Icon className="h-3 w-3" />
-                  {action.label}
-                </button>
-              )
-            })}
-            {!showAllActions && QUICK_ACTIONS.length > 6 && (
+      <div className="border-t border-slate-800/50 px-4 py-3">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          Quick Actions {hasSentMessage && <span className="text-slate-600">(click any)</span>}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {visibleActions.map((action) => {
+            const Icon = action.icon
+            return (
               <button
+                key={action.prompt}
                 type="button"
-                onClick={() => setShowAllActions(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-700 px-3 py-1.5 text-xs text-slate-500 transition-colors hover:border-primary/30 hover:text-white"
+                onClick={() => handleSend(action.prompt)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-primary/30 hover:bg-slate-800 hover:text-white"
               >
-                +{QUICK_ACTIONS.length - 6} more
+                <Icon className="h-3 w-3" />
+                {action.label}
               </button>
-            )}
-          </div>
+            )
+          })}
+          {!showAllActions && QUICK_ACTIONS.length > 8 && (
+            <button
+              type="button"
+              onClick={() => setShowAllActions(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-700 px-3 py-1.5 text-xs text-slate-500 transition-colors hover:border-primary/30 hover:text-white"
+            >
+              +{QUICK_ACTIONS.length - 8} more
+            </button>
+          )}
+          {showAllActions && (
+            <button
+              type="button"
+              onClick={() => setShowAllActions(false)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-700 px-3 py-1.5 text-xs text-slate-500 transition-colors hover:border-primary/30 hover:text-white"
+            >
+              Show less
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="border-t border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-end gap-2">
@@ -346,7 +371,7 @@ export function AiChatbox() {
           </button>
         </div>
         <p className="mt-1.5 text-[10px] text-slate-600">
-          Automations &middot; Contacts &middot; Conversations &middot; Deals &middot; Broadcasts &middot; Tags &middot; Dashboard &middot; Shift+Enter for new line
+          Automations &middot; Contacts &middot; Conversations &middot; Deals &middot; Broadcasts &middot; Tags &middot; Templates &middot; Dashboard &middot; Shift+Enter for new line
         </p>
       </div>
     </div>
