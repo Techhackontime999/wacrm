@@ -10,6 +10,7 @@ function getConfig() {
 export async function callAi(
   messages: AiMessage[],
   tools?: object[],
+  responseFormat?: { type: "json_object" },
 ): Promise<AiResponse> {
   const { baseUrl, apiKey, model } = getConfig()
 
@@ -31,6 +32,10 @@ export async function callAi(
   if (tools && tools.length > 0) {
     body.tools = tools
     body.tool_choice = "auto"
+  }
+
+  if (responseFormat) {
+    body.response_format = responseFormat
   }
 
   const res = await fetch(`${baseUrl}/chat/completions`, {

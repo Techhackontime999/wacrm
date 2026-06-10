@@ -13,6 +13,7 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { supabaseAdmin } from './admin-client'
+import { getCachedPhone, setCachedPhone } from '@/lib/redis/helpers'
 
 // ------------------------------------------------------------
 // Flows-side Meta sender (interactive variants).
@@ -89,7 +90,12 @@ export async function engineSendText(
     return r.messageId
   }
 
-  const variants = phoneVariants(sanitized)
+  // [B3] Phone variant cache — try cached phone first.
+  const cachedPhone = await getCachedPhone(contact.id)
+  const baseVariants = phoneVariants(sanitized)
+  const variants = cachedPhone
+    ? [cachedPhone, ...baseVariants.filter(v => v !== cachedPhone)]
+    : baseVariants
   let workingPhone = sanitized
   let waMessageId = ''
   let lastError: unknown = null
@@ -107,6 +113,9 @@ export async function engineSendText(
   }
   if (lastError) throw lastError
 
+  if (workingPhone !== sanitized || !cachedPhone) {
+    await setCachedPhone(contact.id, workingPhone)
+  }
   if (workingPhone !== sanitized) {
     await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
   }
@@ -249,10 +258,14 @@ async function sendInteractiveViaMeta(
     return r.messageId
   }
 
-  // Same phone-variant retry as automations/meta-send.ts. Numbers
-  // registered with/without a trunk 0 + Meta's sandbox quirks all
-  // need this to reliably land a message.
-  const variants = phoneVariants(sanitized)
+  // [B3] Phone variant cache — try cached phone first (dual
+  // integration: sendInteractiveViaMeta has its own variant loop,
+  // independent from engineSendText's above). [R7]
+  const cachedPhone = await getCachedPhone(contact.id)
+  const baseVariants = phoneVariants(sanitized)
+  const variants = cachedPhone
+    ? [cachedPhone, ...baseVariants.filter(v => v !== cachedPhone)]
+    : baseVariants
   let workingPhone = sanitized
   let waMessageId = ''
   let lastError: unknown = null
@@ -270,6 +283,9 @@ async function sendInteractiveViaMeta(
   }
   if (lastError) throw lastError
 
+  if (workingPhone !== sanitized || !cachedPhone) {
+    await setCachedPhone(contact.id, workingPhone)
+  }
   if (workingPhone !== sanitized) {
     await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
   }

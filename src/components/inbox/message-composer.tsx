@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Send, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ReplyQuote } from "./reply-quote";
+import { AiReplyButton } from "./ai-reply-button";
+import { useAi } from "@/lib/ai/context";
 
 interface ReplyDraft {
   /** Internal UUID of the message being replied to — sent back through onSend. */
@@ -76,6 +78,15 @@ export function MessageComposer({
     [adjustHeight]
   );
 
+  // Register suggestion target for AI reply
+  const { registerSuggestionTarget } = useAi()
+  useEffect(() => {
+    registerSuggestionTarget((suggestionText: string) => {
+      setText(suggestionText)
+    })
+    return () => registerSuggestionTarget(null)
+  }, [registerSuggestionTarget])
+
   return (
     <div className="border-t border-slate-800 bg-slate-900 p-3">
       {replyTo && (
@@ -105,6 +116,7 @@ export function MessageComposer({
       )}
 
       <div className="flex items-end gap-2">
+        <AiReplyButton conversationId={conversationId} />
         <Button
           variant="ghost"
           size="icon-lg"

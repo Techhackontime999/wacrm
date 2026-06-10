@@ -16,6 +16,7 @@ import type {
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
 import { engineSendText, engineSendTemplate } from './meta-send'
+import { redisSafe } from '@/lib/redis/client'
 
 // ------------------------------------------------------------
 // Public API
@@ -44,9 +45,27 @@ export interface DispatchInput {
 /**
  * Fire all active automations matching the given trigger for a user.
  *
+ * **Serial is the default** — each automation runs and awaits before
+ * the next starts. This guarantees determinism: no two automations
+ * race on shared state (contact fields, tags, deals, conversations).
+ *
+ * To opt into parallel execution, replace the serial `for` loop with
+ * `Promise.allSettled` (see docs below). Only do this when every
+ * automation for this trigger has been audited as independent (no
+ * shared write targets).
+ *
  * Must never throw — callers use fire-and-forget from the webhook.
  * All errors are caught and logged; per-automation failures are
  * recorded into automation_logs with status='failed'.
+ *
+ * ⚠️ KNOWN RACE CONDITIONS (parallel mode only):
+ * - Two automations update the same contact field → last write wins
+ * - Two automations add/remove tags on the same contact → interleaving
+ * - Two automations create deals → duplicates may appear
+ * - Two automations assign conversation → last assignment wins
+ * - Log ordering (automation_logs) → non-deterministic step order
+ * - Execution counter RPC → per-auto counter is atomic, but
+ *   last_executed_at may be whichever finishes last
  */
 export async function runAutomationsForTrigger(input: DispatchInput): Promise<void> {
   try {
@@ -64,6 +83,14 @@ export async function runAutomationsForTrigger(input: DispatchInput): Promise<vo
     }
     if (!automations || automations.length === 0) return
 
+    // Serial execution — safe default. To opt into parallel, replace
+    // this loop with:
+    //   await Promise.allSettled(
+    //     automations.map(async (a) => {
+    //       if (!triggerMatches(a, input.context)) return
+    //       await executeAutomation(a, input)
+    //     })
+    //   )
     for (const automation of automations as Automation[]) {
       if (!triggerMatches(automation, input.context)) continue
       try {
@@ -220,18 +247,30 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
     if (step.step_type === 'wait') {
       const cfg = step.step_config as WaitStepConfig
       const ms = waitMs(cfg)
-      await db.from('automation_pending_executions').insert({
-        automation_id: args.automation.id,
-        user_id: args.automation.user_id,
-        contact_id: args.contactId,
-        log_id: args.logId,
-        parent_step_id: args.parentStepId,
-        branch: args.branch,
-        next_step_position: step.position + 1,
-        context: args.context,
-        run_at: new Date(Date.now() + ms).toISOString(),
-        status: 'pending',
-      })
+      const runAt = new Date(Date.now() + ms)
+      const { data: pendingRow } = await db
+        .from('automation_pending_executions')
+        .insert({
+          automation_id: args.automation.id,
+          user_id: args.automation.user_id,
+          contact_id: args.contactId,
+          log_id: args.logId,
+          parent_step_id: args.parentStepId,
+          branch: args.branch,
+          next_step_position: step.position + 1,
+          context: args.context,
+          run_at: runAt.toISOString(),
+          status: 'pending',
+        })
+        .select('id')
+        .maybeSingle()
+      // Push to Redis sorted set for real-time scheduler (best-effort)
+      if (pendingRow?.id) {
+        await redisSafe(
+          (r) => r.zadd('wacrm:pending', runAt.getTime(), pendingRow.id),
+          undefined,
+        )
+      }
       results.push({
         step_id: step.id,
         step_type: step.step_type,
@@ -471,6 +510,7 @@ async function resolveConversationId(args: ExecuteArgs): Promise<string> {
     .maybeSingle()
   if (error) throw new Error(`conversation lookup failed: ${error.message}`)
   if (!data?.id) throw new Error('no conversation for contact')
+  args.context.conversation_id = data.id as string
   return data.id as string
 }
 
@@ -591,3 +631,54 @@ async function markPending(id: string, status: 'done' | 'failed') {
     .update({ status })
     .eq('id', id)
 }
+
+// ----------------------------------------------------------------
+// B5 — Real-time wait step scheduler
+// ----------------------------------------------------------------
+// A lightweight in-process loop picks due pending executions from
+// the Redis sorted set every ~1s and resumes them immediately.
+//
+// ⚠️ SERVERLESS LIMITATION: This uses setTimeout and only works in
+// long-running Node.js processes (VPS, bare metal). On serverless
+// platforms (Vercel, Netlify) the scheduler dies when the function
+// returns. The DB cron endpoint (GET /api/automations/cron) remains
+// the safety net for all deployment targets.
+//
+// [R8] Module-level invocation starts the scheduler when this module
+// is first loaded.
+
+async function processDuePendings() {
+  const due = await redisSafe(
+    (r) => r.zrangebyscore('wacrm:pending', 0, Date.now()),
+    [],
+  )
+  if (due.length > 0) {
+    const admin = supabaseAdmin()
+    for (const id of due) {
+      await redisSafe((r) => r.zrem('wacrm:pending', id), undefined)
+      const { data: row } = await admin
+        .from('automation_pending_executions')
+        .select('*')
+        .eq('id', id)
+        .eq('status', 'pending')
+        .maybeSingle()
+      if (!row) continue
+      await resumePendingExecution({
+        id: row.id as string,
+        automation_id: row.automation_id as string,
+        user_id: row.user_id as string,
+        contact_id: (row.contact_id as string | null) ?? null,
+        log_id: (row.log_id as string | null) ?? null,
+        parent_step_id: (row.parent_step_id as string | null) ?? null,
+        branch: (row.branch as 'yes' | 'no' | null) ?? null,
+        next_step_position: row.next_step_position as number,
+        context: (row.context as AutomationContext) ?? {},
+      })
+    }
+  }
+  setTimeout(processDuePendings, 1000)
+}
+
+// [R8] Start the scheduler on module load (only meaningful in
+// long-running processes). The DB cron is always the safety net.
+processDuePendings()

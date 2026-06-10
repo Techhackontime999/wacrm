@@ -38,6 +38,7 @@ import { MessageComposer } from "./message-composer";
 import { TemplatePicker } from "./template-picker";
 import { buildReplyPreview } from "./reply-quote";
 import { toast } from "sonner";
+import { AiProvider } from "@/lib/ai/context";
 
 interface ReplyDraft {
   id: string;
@@ -552,6 +553,98 @@ export function MessageThread({
     [conversation, onNewMessage, onUpdateMessage],
   );
 
+  const handleAiSendTemplate = useCallback(
+    async (name: string, params: string[]) => {
+      if (!conversation) return;
+
+      // Build rendered body for optimistic message
+      const renderedBody = params.join(" ")
+
+      const tempId = `temp-${Date.now()}`
+
+      const optimisticMsg: Message = {
+        id: tempId,
+        conversation_id: conversation.id,
+        sender_type: "agent",
+        content_type: "template",
+        content_text: renderedBody,
+        template_name: name,
+        status: "sending",
+        created_at: new Date().toISOString(),
+      }
+      onNewMessage(optimisticMsg)
+
+      try {
+        const res = await fetch("/api/whatsapp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversation_id: conversation.id,
+            message_type: "template",
+            template_name: name,
+            template_params: params,
+            content_text: renderedBody,
+          }),
+        })
+
+        const payload = await res.json().catch(() => ({}))
+
+        if (!res.ok) {
+          const reason = (payload as { error?: string }).error || `HTTP ${res.status}`
+          console.error("Failed to send template:", reason)
+          toast.error(`Failed to send template: ${reason}`)
+          onUpdateMessage(tempId, { status: "failed" })
+          return
+        }
+
+        onUpdateMessage(tempId, { status: "sent" })
+      } catch (err) {
+        console.error("Failed to send template:", err)
+        const reason = err instanceof Error ? err.message : "network error"
+        toast.error(`Failed to send template: ${reason}`)
+        onUpdateMessage(tempId, { status: "failed" })
+      }
+    },
+    [conversation, onNewMessage, onUpdateMessage],
+  );
+
+  const handleAiTriggerFlow = useCallback(
+    async (flowId: string, action: "trigger" | "resume") => {
+      if (!conversation) return;
+      try {
+        const res = await fetch(
+          action === "trigger"
+            ? `/api/flows/${flowId}/runs`
+            : `/api/flows/${flowId}/runs/resume`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contact_id: contact?.id,
+              conversation_id: conversation.id,
+            }),
+          },
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error(
+            (data as { error?: string }).error ?? `Flow ${action} failed`,
+          );
+        } else {
+          toast.success(
+            action === "trigger"
+              ? "Flow started"
+              : "Flow resumed",
+          );
+        }
+      } catch (err) {
+        console.error("[ai] flow action failed:", err);
+        toast.error("Failed to execute flow action");
+      }
+    },
+    [conversation, contact],
+  );
+
   // Build a quick id → Message map so reply quotes can be rendered without
   // an extra fetch — the thread already holds the full conversation.
   const messagesById = useMemo(() => {
@@ -943,20 +1036,22 @@ export function MessageThread({
       </div>
 
       {/* Composer */}
-      <MessageComposer
-        conversationId={conversation.id}
-        sessionExpired={sessionInfo.expired}
-        onSend={handleSend}
-        onOpenTemplates={handleOpenTemplates}
-        replyTo={replyTo}
-        onClearReply={() => setReplyTo(null)}
-      />
+      <AiProvider onSendTemplate={handleAiSendTemplate} onTriggerFlow={handleAiTriggerFlow}>
+        <MessageComposer
+          conversationId={conversation.id}
+          sessionExpired={sessionInfo.expired}
+          onSend={handleSend}
+          onOpenTemplates={handleOpenTemplates}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+        />
 
-      <TemplatePicker
-        open={templateModalOpen}
-        onOpenChange={setTemplateModalOpen}
-        onSelect={handleSendTemplate}
-      />
+        <TemplatePicker
+          open={templateModalOpen}
+          onOpenChange={setTemplateModalOpen}
+          onSelect={handleSendTemplate}
+        />
+      </AiProvider>
     </div>
   );
 }

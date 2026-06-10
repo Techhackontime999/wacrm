@@ -14,6 +14,7 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from '@/lib/rate-limit'
+import { getCachedPhone, setCachedPhone } from '@/lib/redis/helpers'
 
 export async function POST(request: Request) {
   try {
@@ -200,7 +201,12 @@ export async function POST(request: Request) {
     }
 
     try {
-      const variants = phoneVariants(sanitizedPhone)
+      // [B3] Phone variant cache — try cached phone first.
+      const cachedPhone = await getCachedPhone(contact.id)
+      const baseVariants = phoneVariants(sanitizedPhone)
+      const variants = cachedPhone
+        ? [cachedPhone, ...baseVariants.filter(v => v !== cachedPhone)]
+        : baseVariants
       let lastError: unknown = null
 
       for (const variant of variants) {
@@ -211,9 +217,6 @@ export async function POST(request: Request) {
           break
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
-          // Only retry when the failure is specifically that the
-          // recipient isn't in Meta's allowed list. Any other error
-          // (bad token, invalid template, etc.) bubbles up immediately.
           if (!isRecipientNotAllowedError(message)) {
             throw err
           }
@@ -223,6 +226,11 @@ export async function POST(request: Request) {
       }
 
       if (lastError) throw lastError
+
+      // Update cache if working phone changed or was not cached.
+      if (workingPhone !== sanitizedPhone || !cachedPhone) {
+        await setCachedPhone(contact.id, workingPhone)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown Meta API error'
       console.error('Meta API send failed for all variants:', message)
@@ -233,8 +241,7 @@ export async function POST(request: Request) {
     }
 
     // If a non-original variant succeeded, update the contact so future
-    // sends go straight through. sanitizePhoneForMeta on workingPhone
-    // will yield workingPhone itself, so re-storing preserves it.
+    // sends go straight through.
     if (workingPhone !== sanitizedPhone) {
       console.log(
         `[whatsapp/send] Auto-corrected contact phone: ${sanitizedPhone} → ${workingPhone}`

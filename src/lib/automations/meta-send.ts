@@ -7,6 +7,7 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
 import { supabaseAdmin } from './admin-client'
+import { getCachedPhone, setCachedPhone } from '@/lib/redis/helpers'
 
 // ------------------------------------------------------------
 // Automation-side Meta sender.
@@ -107,10 +108,13 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     return r.messageId
   }
 
-  // Same phone-variant retry as /api/whatsapp/send — Meta sandbox and
-  // numbers registered with/without a trunk 0 both require this to
-  // reliably land a message.
-  const variants = phoneVariants(sanitized)
+  // [B3] Phone variant cache — try cached phone first, fall back to
+  // full variant retry loop.
+  const cachedPhone = await getCachedPhone(contact.id)
+  const baseVariants = phoneVariants(sanitized)
+  const variants = cachedPhone
+    ? [cachedPhone, ...baseVariants.filter(v => v !== cachedPhone)]
+    : baseVariants
   let workingPhone = sanitized
   let waMessageId = ''
   let lastError: unknown = null
@@ -128,6 +132,9 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   }
   if (lastError) throw lastError
 
+  if (workingPhone !== sanitized || !cachedPhone) {
+    await setCachedPhone(contact.id, workingPhone)
+  }
   if (workingPhone !== sanitized) {
     await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id)
   }

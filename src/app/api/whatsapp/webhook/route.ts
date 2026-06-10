@@ -6,6 +6,7 @@ import { normalizePhone, phonesMatch } from '@/lib/whatsapp/phone-utils'
 import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
+import { redisSafe } from '@/lib/redis/client'
 
 // Lazy-initialized to avoid build-time crash when env vars are missing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,6 +176,42 @@ export async function POST(request: Request) {
     body = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  // [B2] Webhook deduplication — Meta can deliver the same payload
+  // twice within seconds. Check each message id against Redis; if
+  // any is a duplicate, skip the entire batch.
+  const msgIds: string[] = []
+  if (body.entry) {
+    for (const entry of body.entry) {
+      for (const change of entry.changes) {
+        for (const msg of change.value.messages ?? []) {
+          msgIds.push(msg.id)
+        }
+      }
+    }
+  }
+
+  let dedupFailed = false
+  for (const id of msgIds) {
+    const key = `wacrm:webhook:${id}`
+    const ok = await redisSafe(
+      (r) => r.set(key, '1', 'EX', 30, 'NX'),
+      null, // fallback → skip dedup
+    )
+    if (ok === null) {
+      // Redis unavailable — skip dedup for this batch
+      break
+    }
+    if (!ok) {
+      console.log('[webhook] duplicate', id, 'skipped')
+      dedupFailed = true
+      break
+    }
+  }
+
+  if (dedupFailed) {
+    return NextResponse.json({ status: 'duplicate' }, { status: 200 })
   }
 
   // Process asynchronously so we can ack Meta within their timeout.
@@ -813,7 +850,37 @@ async function findOrCreateContact(
   phone: string,
   name: string
 ): Promise<ContactOutcome | null> {
-  // Look up existing contacts for this user
+  // Exact match first (fast with the new index from A1).
+  // Use .limit(2) instead of .maybeSingle() to avoid throwing
+  // on duplicates if the index wasn't created yet.
+  const { data: exact, error: exactError } = await supabaseAdmin()
+    .from('contacts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('phone', phone)
+    .limit(2)
+
+  if (exactError) {
+    console.error('Error fetching contacts:', exactError)
+    return null
+  }
+
+  if (exact && exact.length === 1) {
+    const existingContact = exact[0]
+    if (name && name !== existingContact.name) {
+      await supabaseAdmin()
+        .from('contacts')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', existingContact.id)
+    }
+    return { contact: existingContact, wasCreated: false }
+  }
+
+  if (exact && exact.length > 1) {
+    console.warn('[webhook] duplicate contacts for phone', phone)
+  }
+
+  // Fuzzy fallback (preserves existing behavior for mismatched formats)
   const { data: contacts, error: contactsError } = await supabaseAdmin()
     .from('contacts')
     .select('*')
@@ -824,11 +891,9 @@ async function findOrCreateContact(
     return null
   }
 
-  // Use phonesMatch for flexible matching
   const existingContact = contacts?.find((c: ContactRow) => phonesMatch(c.phone, phone))
 
   if (existingContact) {
-    // Update name if it changed
     if (name && name !== existingContact.name) {
       await supabaseAdmin()
         .from('contacts')

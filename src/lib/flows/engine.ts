@@ -33,6 +33,7 @@
  */
 
 import { supabaseAdmin } from "./admin-client";
+import { redisSafe } from "@/lib/redis/client";
 import {
   engineSendInteractiveButtons,
   engineSendInteractiveList,
@@ -55,6 +56,37 @@ import {
   type StartNodeConfig,
   type KeywordTriggerConfig,
 } from "./types";
+
+// ============================================================
+// In-memory entry flow cache (A7).
+// Module-level Map is lost on Next.js hot-reload in dev mode.
+// In production (single-process VPS) it persists as expected.
+// In serverless deployments (Vercel), each invocation gets a fresh Map.
+// ============================================================
+
+const entryFlowCache = new Map<string, { flow: FlowRow | null; expiresAt: number }>()
+const ENTRY_CACHE_TTL_MS = 5_000 // 5 seconds
+const ENTRY_CACHE_MAX = 100
+
+/**
+ * Normalize a cache key for consistent whitespace-insensitive matching.
+ * Exported pure for unit testing.
+ */
+export function normalizeCacheKey(text: string): string {
+  return text.toLowerCase().trim().replace(/\s+/g, ' ')
+}
+
+/**
+ * Build a unique cache key that includes isFirstInbound [R1].
+ * Exported pure for unit testing without a Supabase mock [R11].
+ */
+export function makeEntryFlowCacheKey(
+  userId: string,
+  isFirstInbound: boolean,
+  text: string,
+): string {
+  return `${userId}:${+isFirstInbound}:${normalizeCacheKey(text)}`
+}
 
 // ============================================================
 // Pure helpers — extracted so engine.test.ts can exercise them
@@ -312,6 +344,28 @@ async function findEntryFlow(
   // are responses to existing prompts; they never start a new flow.
   if (message.kind !== "text") return null;
 
+  // [A7] Cache key includes isFirstInbound to prevent cross-trigger
+  // collisions (a first_inbound_message flow and a keyword flow may
+  // both match the same text but return different flows). [R1]
+  const cacheKey = makeEntryFlowCacheKey(userId, isFirstInbound, message.text)
+
+  // [A7] Check in-memory cache first (fastest, no I/O).
+  const cached = entryFlowCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.flow
+
+  // [B4] Check Redis cache (cross-instance). Falls back to in-memory
+  // when Redis is unavailable.
+  const redisResult = await redisSafe(
+    (r) => r.get(`wacrm:flow:entry:${cacheKey}`),
+    null,
+  )
+  if (redisResult !== null) {
+    const flow = redisResult === 'NULL' ? null : JSON.parse(redisResult) as FlowRow
+    // Populate in-memory cache too
+    entryFlowCache.set(cacheKey, { flow, expiresAt: Date.now() + ENTRY_CACHE_TTL_MS })
+    return flow
+  }
+
   // Pull all active flows for this user. Active set is bounded (the
   // builder discourages double-trigger overlap; partial index makes
   // the lookup index-supported).
@@ -324,20 +378,44 @@ async function findEntryFlow(
   if (error || !flows) return null;
 
   const typed = flows as FlowRow[];
+  let result: FlowRow | null = null
   for (const flow of typed) {
     if (flow.trigger_type === "keyword") {
       if (matchesKeywordTrigger(
         message.text,
         flow.trigger_config as KeywordTriggerConfig,
       )) {
-        return flow;
+        result = flow
+        break
       }
     } else if (flow.trigger_type === "first_inbound_message" && isFirstInbound) {
-      return flow;
+      result = flow
+      break
     }
     // 'manual' triggers do not auto-start from inbound messages.
   }
-  return null;
+
+  // [A7] Store result in in-memory cache with FIFO eviction.
+  if (entryFlowCache.size >= ENTRY_CACHE_MAX) {
+    const oldest = entryFlowCache.keys().next().value
+    if (oldest !== undefined) entryFlowCache.delete(oldest)
+  }
+  entryFlowCache.set(cacheKey, { flow: result, expiresAt: Date.now() + ENTRY_CACHE_TTL_MS })
+
+  // [B4] Fire-and-forget write to Redis cache.
+  if (result) {
+    redisSafe(
+      (r) => r.set(`wacrm:flow:entry:${cacheKey}`, JSON.stringify(result), 'EX', 5),
+      undefined,
+    ).catch(() => {})
+  } else {
+    redisSafe(
+      (r) => r.set(`wacrm:flow:entry:${cacheKey}`, 'NULL', 'EX', 5),
+      undefined,
+    ).catch(() => {})
+  }
+
+  return result
 }
 
 // ============================================================

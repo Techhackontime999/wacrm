@@ -21,6 +21,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { redisSafe } from '@/lib/redis/client';
 
 export interface RateLimitOptions {
   /** Max requests allowed in `windowMs`. */
@@ -112,6 +113,41 @@ export function rateLimitResponse(result: RateLimitResult): NextResponse {
   );
 }
 
+/**
+ * Async rate-limit check backed by Redis. Falls back to the sync
+ * in-memory check when Redis is unavailable.
+ */
+export async function checkRateLimitWithRedis(
+  key: string,
+  { limit, windowMs }: RateLimitOptions,
+): Promise<RateLimitResult> {
+  const now = Date.now()
+  const redisKey = `wacrm:rl:${key}`
+
+  const count = await redisSafe(
+    async (r) => {
+      const c = await r.incr(redisKey)
+      if (c === 1) await r.expire(redisKey, Math.ceil(windowMs / 1000))
+      return c
+    },
+    null,
+  )
+
+  // Redis fallback — use in-memory
+  if (count === null) {
+    return checkRateLimit(key, { limit, windowMs })
+  }
+
+  if (count > limit) {
+    const ttl = await redisSafe(
+      (r) => r.ttl(redisKey),
+      Math.ceil(windowMs / 1000),
+    )
+    return { success: false, remaining: 0, reset: now + ttl * 1000, limit }
+  }
+  return { success: true, remaining: limit - count, reset: now + windowMs, limit }
+}
+
 /** Preconfigured budgets, tweak here not at call sites. */
 export const RATE_LIMITS = {
   /** Individual message send. 60/min per user = one per second
@@ -125,6 +161,8 @@ export const RATE_LIMITS = {
    *  fidget with reactions and a single "swap" is actually two calls
    *  (remove + add) under the hood. */
   react: { limit: 120, windowMs: 60_000 },
+  /** AI Smart Reply suggestions. 30/min per user — bursty but bounded. */
+  ai_reply: { limit: 30, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't

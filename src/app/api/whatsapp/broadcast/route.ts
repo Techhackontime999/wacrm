@@ -13,6 +13,7 @@ import {
   rateLimitResponse,
   RATE_LIMITS,
 } from '@/lib/rate-limit'
+import { getCachedPhone, setCachedPhone } from '@/lib/redis/helpers'
 
 interface BroadcastResult {
   phone: string
@@ -46,6 +47,8 @@ interface BroadcastResult {
 interface NewRecipient {
   phone: string
   params?: string[]
+  /** Optional contact id for phone variant cache lookup. */
+  contactId?: string
 }
 
 export async function POST(request: Request) {
@@ -144,9 +147,17 @@ export async function POST(request: Request) {
 
       // Retry with phone variants on "not in allowed list" so numbers
       // that differ only in a trunk-prefix 0 still reach recipients.
-      const variants = phoneVariants(sanitized)
+      // [B3] Use phone cache if contactId is available.
+      const baseVariants = phoneVariants(sanitized)
+      const cachedPhone = recipient.contactId
+        ? await getCachedPhone(recipient.contactId)
+        : null
+      const variants = cachedPhone
+        ? [cachedPhone, ...baseVariants.filter(v => v !== cachedPhone)]
+        : baseVariants
       let sentMessageId: string | null = null
       let lastError: string | null = null
+      let workingPhone: string | null = null
 
       for (const variant of variants) {
         try {
@@ -159,6 +170,7 @@ export async function POST(request: Request) {
             params: recipient.params ?? [],
           })
           sentMessageId = result.messageId
+          workingPhone = variant
           lastError = null
           break
         } catch (error) {
@@ -171,6 +183,11 @@ export async function POST(request: Request) {
           lastError = errorMessage
           // retry with next variant
         }
+      }
+
+      // [B3] Cache the working phone for future sends.
+      if (sentMessageId && recipient.contactId && workingPhone && workingPhone !== cachedPhone) {
+        await setCachedPhone(recipient.contactId, workingPhone)
       }
 
       if (sentMessageId) {
