@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-// Lazy, shared service-role client for automation engine work.
-// Mirrors the pattern used by the webhook handler
-// (src/app/api/whatsapp/webhook/route.ts).
+// Lazy singleton service-role client for server-side admin work.
+// Shared across automations, flows, webhooks, and API routes so the
+// pattern cannot drift between call sites.
 let _adminClient: SupabaseClient | null = null
 
 export function supabaseAdmin(): SupabaseClient {
