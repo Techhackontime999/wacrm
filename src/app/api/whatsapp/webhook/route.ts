@@ -7,6 +7,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { redisSafe } from '@/lib/redis/client'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import type { Contact } from '@/types'
 
 interface WhatsAppMessage {
   id: string
@@ -92,13 +93,13 @@ export async function GET(request: Request) {
     // Check if any config's verify_token matches. Also collect the
     // matching row so we can opportunistically upgrade its token to
     // GCM if it was still in the legacy CBC format.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let matchedConfig: any = null
+    // Narrower than full WhatsAppConfig: GET only selects id + verify_token.
+    let matchedConfig: { id: string; verify_token: string } | null = null
     for (const config of configs) {
       if (!config.verify_token) continue
       try {
         if (decrypt(config.verify_token) === verifyToken) {
-          matchedConfig = config
+          matchedConfig = { id: config.id, verify_token: config.verify_token }
           break
         }
       } catch {
@@ -822,11 +823,8 @@ async function parseMessageContent(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ContactRow = any
-
 interface ContactOutcome {
-  contact: ContactRow
+  contact: Contact
   /** True when this call created the row; drives new_contact_created
    *  automation dispatch in processMessage. */
   wasCreated: boolean
@@ -878,7 +876,7 @@ async function findOrCreateContact(
     return null
   }
 
-  const existingContact = contacts?.find((c: ContactRow) => phonesMatch(c.phone, phone))
+  const existingContact = contacts?.find((c: Contact) => phonesMatch(c.phone, phone))
 
   if (existingContact) {
     if (name && name !== existingContact.name) {
