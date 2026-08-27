@@ -14,7 +14,7 @@ import type {
   CreateDealStepConfig,
   AssignConversationStepConfig,
 } from '@/types'
-import { supabaseAdmin } from './admin-client'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { engineSendText, engineSendTemplate } from './meta-send'
 import { redisSafe } from '@/lib/redis/client'
 
